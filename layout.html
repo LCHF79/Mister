@@ -31,7 +31,7 @@
                         <tr>
                         <td>{{.Description }}</td>
                         <td>{{ .State | GetState }}</td>
-                        <td><a href="http://192.168.1.99:8000/switch?state={{ .State | ToggleState}}&pin={{.Pin}}">Turn {{ .State | ToggleState}}</a></td>
+                        <td><a href="/switch?state={{ .State | ToggleState}}&pin={{.Pin}}">Turn {{ .State | ToggleState}}</a></td>
                         </tr>
                     {{end}}
               </tbody>
