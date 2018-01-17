@@ -182,8 +182,9 @@ func SwitchRelay(pin uint8, state string) bool {
 
 func TestTemplate(w http.ResponseWriter, r *http.Request) {
 	fmap := template.FuncMap{
-		"GetState":    GetState,
-		"ToggleState": ToggleState,
+		"GetState":      GetState,
+		"ToggleState":   ToggleState,
+		"GetStateClass": GetStateClass,
 	}
 	tmpl := template.Must(template.New("layout.html").Funcs(fmap).ParseFiles("layout.html"))
 
