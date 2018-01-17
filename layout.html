@@ -28,7 +28,7 @@
               </thead>
               <tbody>
                     {{range .Relays}}
-                        <tr {{.state | GetStateClass}}>
+                        <tr{{.state | GetStateClass}}>
                           <td>{{.Description }}</td>
                           <td>{{ .State | GetState }}</td>
                           <td><a href="/switch?state={{ .State | ToggleState}}&pin={{.Pin}}">Turn {{ .State | ToggleState}}</a></td>
