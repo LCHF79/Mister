@@ -213,6 +213,14 @@ func GetState(s uint8) string {
 	}
 }
 
+func GetStateClass(s uint8) string {
+	if s == 1 {
+		return ""
+	} else {
+		return " class=\"table-primary\""
+	}
+}
+
 func ToggleState(s uint8) string {
 	if s == 1 {
 		return "on"
