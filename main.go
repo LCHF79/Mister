@@ -217,9 +217,9 @@ func GetState(s uint8) string {
 func GetStateClass(s uint8) string {
 	fmt.Println("Class func fired  class=\"table-primary\"")
 	if s == 1 {
-		return ""
+		return "table-light"
 	} else {
-		return " class=\"table-primary\""
+		return "table-primary"
 	}
 }
 
