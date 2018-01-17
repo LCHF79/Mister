@@ -119,7 +119,7 @@ func CheckTemps() {
 	temps = nil
 	sensors, err := ds18b20.Sensors()
 	if err != nil {
-		panic(err)
+		//panic(err)
 	}
 
 	for _, sensor := range sensors {
