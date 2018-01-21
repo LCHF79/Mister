@@ -180,6 +180,31 @@ func SwitchRelay(pin uint8, state string) bool {
 	return false
 }
 
+func DutyCycle() {
+	if err := rpio.Open(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	defer rpio.Close()
+
+	for i, p := range relays {
+		if p.RunTill.Sub(time.Now()) > 0 {
+			rpio.Pin(p.Pin).Output()
+			if p.State == 1 {
+				rpio.Pin(p.Pin).Low()
+			} else {
+				rpio.Pin(p.Pin).High()
+			}
+			r := relays[:i]
+			r = append(r, Relay{p.ID, p.Description, p.Pin, uint8(rpio.Pin(p.Pin).Read()), time.Now().Local().Add(time.Minute * 30)})
+			if len(relays) > i {
+				r = append(r, relays[i+1:]...)
+			}
+			fmt.Println(r)
+		}
+	}
+}
+
 func TestTemplate(w http.ResponseWriter, r *http.Request) {
 	fmap := template.FuncMap{
 		"GetState":      GetState,
@@ -239,26 +264,20 @@ func InitRelays() {
 	defer rpio.Close()
 
 	relays = append(relays, Relay{
-		ID:          1,
+		ID:          2,
 		Description: "System A",
-		Pin:         5,
-		State:       uint8(rpio.Pin(5).Read()),
+		Pin:         6,
+		State:       uint8(rpio.Pin(6).Read()),
 	},
 		Relay{
-			ID:          2,
-			Description: "System B",
-			Pin:         6,
-			State:       uint8(rpio.Pin(6).Read()),
-		},
-		Relay{
 			ID:          3,
-			Description: "System C",
+			Description: "System B",
 			Pin:         7,
 			State:       uint8(rpio.Pin(7).Read()),
 		},
 		Relay{
 			ID:          4,
-			Description: "Unused",
+			Description: "System C",
 			Pin:         8,
 			State:       uint8(rpio.Pin(8).Read()),
 		},
