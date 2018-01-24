@@ -85,8 +85,7 @@ func GetTemps(w http.ResponseWriter, r *http.Request) {
 
 // HandleSwitch func
 func HandleSwitch(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Handler fired")
-	fmt.Println(r.URL)
+	fmt.Printf(r.URL.String() + "/n")
 	p := r.FormValue("pin")
 	q, _ := strconv.ParseInt(p, 10, 8)
 	s := uint8(q)
@@ -178,7 +177,6 @@ func GetState(s uint8) string {
 
 // GetStateClass func
 func GetStateClass(s uint8) string {
-	fmt.Println("Class func fired  class=\"table-primary\"")
 	if s == 1 {
 		return "table-light"
 	}
@@ -225,21 +223,14 @@ func InitRelays() {
 
 }
 
-// BaseHandler func
-func BaseHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println(r.URL)
-	json.NewEncoder(w).Encode(relays)
-}
-
 // main function to boot up everything
 func main() {
 	ScheduleCheckTemps()
 	InitRelays()
 	mux := http.NewServeMux()
-	mux.HandleFunc("/test", TestTemplate)
 	mux.HandleFunc("/temp", GetTemps)
 	mux.HandleFunc("/switch", HandleSwitch)
-	mux.HandleFunc("/", BaseHandler)
+	mux.HandleFunc("/", TestTemplate)
 
 	logFile, err := os.OpenFile("log.txt", os.O_CREATE|os.O_APPEND|os.O_RDWR, 0666)
 	if err != nil {
