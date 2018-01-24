@@ -85,7 +85,7 @@ func GetTemps(w http.ResponseWriter, r *http.Request) {
 
 // HandleSwitch func
 func HandleSwitch(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf(r.URL.String())
+	fmt.Printf("%v\n", r.URL.String())
 	p := r.FormValue("pin")
 	q, _ := strconv.ParseInt(p, 10, 8)
 	s := uint8(q)
