@@ -11,28 +11,17 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/gorilla/mux"
 	rpio "github.com/stianeikeland/go-rpio"
 	"github.com/yryz/ds18b20"
 )
 
-// The person Type (more like an object njh)
-type Person struct {
-	ID        string   `json:"id,omitempty"`
-	Firstname string   `json:"firstname,omitempty"`
-	Lastname  string   `json:"lastname,omitempty"`
-	Address   *Address `json:"address,omitempty"`
-}
-type Address struct {
-	City  string `json:"city,omitempty"`
-	State string `json:"state,omitempty"`
-}
-
+//Sensor struct
 type Sensor struct {
 	ID    string  `json:"id,omitempty"`
 	Value float64 `json:"value,omitempty"`
 }
 
+//Relay struct
 type Relay struct {
 	ID          int       `json:"id,omitempty"`
 	Description string    `json:"description,omitempty"`
@@ -41,65 +30,16 @@ type Relay struct {
 	RunTill     time.Time `json:"runtill,omitempty"`
 }
 
+//Response struct
 type Response struct {
 	Temperature []Sensor
 	Relays      []Relay
 }
 
-type Todo struct {
-	Title string
-	Done  bool
-}
-
-type TodoPageData struct {
-	PageTitle string
-	Todos     []Todo
-}
-
-var people []Person
 var temps []Sensor
 var relays []Relay
 
-// Display all from the people var
-func GetPeople(w http.ResponseWriter, r *http.Request) {
-	json.NewEncoder(w).Encode(people)
-}
-
-// Display a single data
-func GetPerson(w http.ResponseWriter, r *http.Request) {
-	params := mux.Vars(r)
-	for _, item := range people {
-		if item.ID == params["id"] {
-			json.NewEncoder(w).Encode(item)
-			return
-		}
-	}
-	json.NewEncoder(w).Encode(&Person{})
-}
-
-// create a new item
-func CreatePerson(w http.ResponseWriter, r *http.Request) {
-	params := mux.Vars(r)
-	var person Person
-	_ = json.NewDecoder(r.Body).Decode(&person)
-	person.ID = params["id"]
-	person.Firstname = params["firstname"]
-	people = append(people, person)
-	json.NewEncoder(w).Encode(people)
-}
-
-// Delete an item
-func DeletePerson(w http.ResponseWriter, r *http.Request) {
-	params := mux.Vars(r)
-	for index, item := range people {
-		if item.ID == params["id"] {
-			people = append(people[:index], people[index+1:]...)
-			break
-		}
-		json.NewEncoder(w).Encode(people)
-	}
-}
-
+// ScheduleCheckTemps func
 func ScheduleCheckTemps() {
 	ticker := time.NewTicker(15 * time.Second)
 	quit := make(chan struct{})
@@ -116,6 +56,7 @@ func ScheduleCheckTemps() {
 	}()
 }
 
+// CheckTemps func
 func CheckTemps() {
 	temps = nil
 	sensors, err := ds18b20.Sensors()
@@ -132,6 +73,7 @@ func CheckTemps() {
 	}
 }
 
+// GetTemps func
 func GetTemps(w http.ResponseWriter, r *http.Request) {
 	res := Response{
 		Temperature: temps,
@@ -141,6 +83,7 @@ func GetTemps(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(res)
 }
 
+// HandleSwitch func
 func HandleSwitch(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Handler fired")
 	fmt.Println(r.URL)
@@ -152,6 +95,7 @@ func HandleSwitch(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// SwitchRelay func
 func SwitchRelay(pin uint8, state string) bool {
 	if err := rpio.Open(); err != nil {
 		fmt.Println(err)
@@ -181,6 +125,7 @@ func SwitchRelay(pin uint8, state string) bool {
 	return false
 }
 
+// DutyCycle func
 func DutyCycle() {
 	if err := rpio.Open(); err != nil {
 		fmt.Println(err)
@@ -206,6 +151,7 @@ func DutyCycle() {
 	}
 }
 
+// TestTemplate func
 func TestTemplate(w http.ResponseWriter, r *http.Request) {
 	fmap := template.FuncMap{
 		"GetState":      GetState,
@@ -221,42 +167,35 @@ func TestTemplate(w http.ResponseWriter, r *http.Request) {
 	tmpl.Execute(w, res)
 }
 
-func HandlePerson(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Person route detected")
-	if r.Method == "GET" {
-		GetPerson(w, r)
-	} else if r.Method == "POST" {
-		CreatePerson(w, r)
-	} else {
-		DeletePerson(w, r)
-	}
-}
-
+// GetState func
 func GetState(s uint8) string {
 	if s == 1 {
 		return "Off"
-	} else {
-		return "On"
 	}
+	return "On"
+
 }
 
+// GetStateClass func
 func GetStateClass(s uint8) string {
 	fmt.Println("Class func fired  class=\"table-primary\"")
 	if s == 1 {
 		return "table-light"
-	} else {
-		return "table-primary"
 	}
+	return "table-primary"
+
 }
 
+// ToggleState func
 func ToggleState(s uint8) string {
 	if s == 1 {
 		return "on"
-	} else {
-		return "off"
 	}
+	return "off"
+
 }
 
+// InitRelays func
 func InitRelays() {
 	if err := rpio.Open(); err != nil {
 		fmt.Println(err)
@@ -286,6 +225,7 @@ func InitRelays() {
 
 }
 
+// BaseHandler func
 func BaseHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println(r.URL)
 	json.NewEncoder(w).Encode(relays)
@@ -296,10 +236,7 @@ func main() {
 	ScheduleCheckTemps()
 	InitRelays()
 	mux := http.NewServeMux()
-	people = append(people, Person{ID: "1", Firstname: "John", Lastname: "Doe", Address: &Address{City: "City X", State: "State X"}})
-	people = append(people, Person{ID: "2", Firstname: "Koko", Lastname: "Doe", Address: &Address{City: "City Z", State: "State Y"}})
 	mux.HandleFunc("/test", TestTemplate)
-	mux.HandleFunc("/people", GetPeople)
 	mux.HandleFunc("/temp", GetTemps)
 	mux.HandleFunc("/switch", HandleSwitch)
 	mux.HandleFunc("/", BaseHandler)
