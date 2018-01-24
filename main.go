@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -303,57 +304,12 @@ func main() {
 	mux.HandleFunc("/switch", HandleSwitch)
 	mux.HandleFunc("/", BaseHandler)
 
+	logFile, err := os.OpenFile("log.txt", os.O_CREATE|os.O_APPEND|os.O_RDWR, 0666)
+	if err != nil {
+		panic(err)
+	}
+	mw := io.MultiWriter(os.Stdout, logFile)
+	log.SetOutput(mw)
 	log.Fatal(http.ListenAndServe(":80", mux))
 
 }
-
-/*
-func AutoRelay() []Relay {
-    r := raspi.NewAdaptor()
-    r1 := gpio.NewRelayDriver(r, "24")
-    r2 := gpio.NewRelayDriver(r, "26")
-    r3 := gpio.NewRelayDriver(r, "31")
-
-    work := func() {
-        for _, t := range temps {
-            if t.ID == "28-021480f9abff" {
-                if t.Value > 28 {
-                    r1.On()
-                    r2.On()
-                    r3.On()
-                } else {
-                    r1.Off()
-                    r2.Off()
-                    r3.Off()
-                }
-            }
-        }
-    }
-
-    robot := gobot.NewRobot("blinkBot",
-        []gobot.Connection{r},
-        []gobot.Device{r1},
-        []gobot.Device{r2},
-        work,
-    )
-
-    robot.Start()
-
-    var relay = []Relay{
-        Relay{
-            ID:    1,
-            State: r1.State(),
-        },
-        Relay{
-            ID:    2,
-            State: r2.State(),
-        },
-        Relay{
-            ID:    2,
-            State: r2.State(),
-        },
-    }
-    return relay
-
-}
-*/
