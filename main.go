@@ -112,8 +112,9 @@ func SwitchRelay(pin uint8, state string) bool {
 
 	for i, p := range relays {
 		if p.Pin == pin {
-			r := relays[:i]
-			r = append(r, Relay{p.ID, p.Description, p.Pin, uint8(rpio.Pin(pin).Read()), time.Now().Local().Add(time.Minute * 30)})
+			var r []Relay
+			r = append(r, relays[:i]...)
+			r = append(r, Relay{p.ID, p.Description, p.Pin, uint8(rpio.Pin(pin).Read()), time.Now().Local().Add(time.Minute * 3)})
 			if len(relays) > i {
 				r = append(r, relays[i+1:]...)
 			}
