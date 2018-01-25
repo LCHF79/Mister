@@ -241,6 +241,12 @@ func main() {
 	}
 	mw := io.MultiWriter(os.Stdout, logFile)
 	log.SetOutput(mw)
-	log.Fatal(http.ListenAndServe(":80", mux))
+	srv := &http.Server{
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 5 * time.Second,
+		Addr:         ":80",
+		Handler:      mux,
+	}
+	log.Fatal(srv.ListenAndServe())
 
 }
