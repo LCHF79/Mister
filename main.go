@@ -118,6 +118,7 @@ func SwitchRelay(pin uint8, state string) bool {
 				r = append(r, relays[i+1:]...)
 			}
 			fmt.Println(r)
+			fmt.Println(relays)
 			return true
 		}
 	}
