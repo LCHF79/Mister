@@ -96,15 +96,15 @@ func HandleSwitch(w http.ResponseWriter, r *http.Request) {
 
 // SwitchRelay func
 func SwitchRelay(pin uint8, state string) bool {
-	if err := rpio.Open(); err != nil {
-		fmt.Println(err)
+	err := rpio.Open()
+	if err != nil {
+		fmt.Printf(err.Error())
 		os.Exit(1)
 	}
+
 	defer rpio.Close()
 	rpio.Pin(pin).Output()
-	fmt.Println(state)
 	if state == "on" {
-		fmt.Println("Turning on")
 		rpio.Pin(pin).Low()
 	} else {
 		rpio.Pin(pin).High()
@@ -195,7 +195,8 @@ func ToggleState(s uint8) string {
 
 // InitRelays func
 func InitRelays() {
-	if err := rpio.Open(); err != nil {
+	err := rpio.Open()
+	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
