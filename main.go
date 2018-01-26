@@ -160,8 +160,10 @@ func DutyCycle() {
 
 // WriteRelay func
 func WriteRelay(rr chan []Relay, wr chan []Relay) {
-	relays = <-wr
-	rr <- relays
+	for {
+		relays = <-wr
+		rr <- relays
+	}
 }
 
 // TestTemplate func
