@@ -47,8 +47,8 @@ func ScheduleCheckTemps(rr chan []Relay, wr chan []Relay) {
 		for {
 			select {
 			case <-ticker.C:
-				CheckTemps()
-				WriteRelay(rr, wr)
+				go CheckTemps()
+				go WriteRelay(rr, wr)
 			case <-quit:
 				ticker.Stop()
 				return
@@ -160,10 +160,10 @@ func DutyCycle() {
 
 // WriteRelay func
 func WriteRelay(rr chan []Relay, wr chan []Relay) {
-	for {
+	if wr != nil {
 		relays = <-wr
-		rr <- relays
 	}
+	rr <- relays
 }
 
 // TestTemplate func
