@@ -40,7 +40,7 @@ var temps []Sensor
 var relays []Relay
 
 // ScheduleCheckTemps func
-func ScheduleCheckTemps() {
+func ScheduleCheckTemps(rr chan []Relay, wr chan []Relay) {
 	ticker := time.NewTicker(60 * time.Second)
 	quit := make(chan struct{})
 	go func() {
@@ -48,6 +48,7 @@ func ScheduleCheckTemps() {
 			select {
 			case <-ticker.C:
 				CheckTemps()
+				WriteRelay(rr, wr)
 			case <-quit:
 				ticker.Stop()
 				return
@@ -84,24 +85,24 @@ func GetTemps(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleSwitch func
-func HandleSwitch(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("%v\n", r.URL.String())
-	p := r.FormValue("pin")
-	q, _ := strconv.ParseInt(p, 10, 8)
-	s := uint8(q)
-	if SwitchRelay(s, r.FormValue("state")) == true {
+func HandleSwitch(rr chan []Relay, wr chan []Relay) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		fmt.Printf("%v\n", r.URL.String())
+		p := r.FormValue("pin")
+		q, _ := strconv.ParseInt(p, 10, 8)
+		s := uint8(q)
+		SwitchRelay(s, r.FormValue("state"), rr, wr)
 		TestTemplate(w, r)
 	}
 }
 
 // SwitchRelay func
-func SwitchRelay(pin uint8, state string) bool {
+func SwitchRelay(pin uint8, state string, rr chan []Relay, wr chan []Relay) {
 	err := rpio.Open()
 	if err != nil {
 		fmt.Printf(err.Error())
 		os.Exit(1)
 	}
-
 	defer rpio.Close()
 
 	var rt time.Time
@@ -115,25 +116,25 @@ func SwitchRelay(pin uint8, state string) bool {
 		rt = time.Now().Local()
 	}
 
-	for i, p := range relays {
+	r := <-rr
+
+	for i, p := range r {
 		if p.Pin == pin {
-			var r []Relay
-			r = append(r, relays[:i]...)
+			r = r[:i]
 			r = append(r, Relay{p.ID, p.Description, p.Pin, uint8(rpio.Pin(pin).Read()), rt})
-			if len(relays) > i {
-				r = append(r, relays[i+1:]...)
+			if len(r) > i {
+				r = append(r, r[i+1:]...)
 			}
-			relays = r
+			wr <- r
 			fmt.Println(relays)
-			return true
 		}
 	}
-	return false
 }
 
 // DutyCycle func
 func DutyCycle() {
-	if err := rpio.Open(); err != nil {
+	err := rpio.Open()
+	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
@@ -155,6 +156,12 @@ func DutyCycle() {
 			fmt.Println(r)
 		}
 	}
+}
+
+// WriteRelay func
+func WriteRelay(rr chan []Relay, wr chan []Relay) {
+	relays = <-wr
+	rr <- relays
 }
 
 // TestTemplate func
@@ -233,11 +240,14 @@ func InitRelays() {
 
 // main function to boot up everything
 func main() {
-	ScheduleCheckTemps()
+	wr := make(chan []Relay)
+	rr := make(chan []Relay)
+	hSwitch := HandleSwitch(wr, rr)
+	ScheduleCheckTemps(rr, wr)
 	InitRelays()
 	mux := http.NewServeMux()
 	mux.HandleFunc("/temp", GetTemps)
-	mux.HandleFunc("/switch", HandleSwitch)
+	mux.HandleFunc("/switch", hSwitch)
 	mux.HandleFunc("/", TestTemplate)
 
 	logFile, err := os.OpenFile("log.txt", os.O_CREATE|os.O_APPEND|os.O_RDWR, 0666)
