@@ -46,10 +46,10 @@ func ScheduleCheckTemps(rr chan []Relay, wr chan []Relay) {
 	quit := make(chan struct{})
 	go func() {
 		for {
+			go WriteRelay(rr, wr)
 			select {
 			case <-ticker.C:
 				go CheckTemps()
-				go WriteRelay(rr, wr)
 			case <-quit:
 				ticker.Stop()
 				return
