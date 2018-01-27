@@ -29,6 +29,7 @@ type Relay struct {
 	Pin         uint8     `json:"pin,omitempty"`
 	State       uint8     `json:"value,omitempty"`
 	RunTill     time.Time `json:"runtill,omitempty"`
+	DutyTime    time.Time `json:"dutytime,omitempty"`
 }
 
 //Response struct
@@ -51,6 +52,7 @@ func ScheduleCheckTemps() {
 			select {
 			case <-ticker.C:
 				go CheckTemps()
+				go DutyCycle()
 			case <-quit:
 				ticker.Stop()
 				return
@@ -123,7 +125,7 @@ func SwitchRelay(pin uint8, state string) {
 		if p.Pin == pin {
 			var rel []Relay
 			rel = r[:i]
-			rel = append(rel, Relay{p.ID, p.Description, p.Pin, uint8(rpio.Pin(pin).Read()), rt})
+			rel = append(rel, Relay{p.ID, p.Description, p.Pin, uint8(rpio.Pin(pin).Read()), rt, time.Now().Local()})
 			if len(r) > i {
 				rel = append(r, rel[i+1:]...)
 			}
@@ -142,7 +144,11 @@ func DutyCycle() {
 	}
 	defer rpio.Close()
 
-	for i, p := range relays {
+	var dt time.Time
+	r := read()
+	var rel []Relay
+
+	for _, p := range r {
 		if p.RunTill.Sub(time.Now()) > 0 {
 			rpio.Pin(p.Pin).Output()
 			if p.State == 1 {
@@ -150,13 +156,11 @@ func DutyCycle() {
 			} else {
 				rpio.Pin(p.Pin).High()
 			}
-			r := relays[:i]
-			r = append(r, Relay{p.ID, p.Description, p.Pin, uint8(rpio.Pin(p.Pin).Read()), time.Now().Local().Add(time.Minute * 30)})
-			if len(r) > i {
-				r = append(r, r[i+1:]...)
-			}
-			fmt.Println(r[:])
+			dt = time.Now().Local()
 		}
+		dt = p.DutyTime
+		rel = append(rel, Relay{p.ID, p.Description, p.Pin, uint8(rpio.Pin(p.Pin).Read()), p.RunTill, dt})
+		write(rel)
 	}
 }
 
