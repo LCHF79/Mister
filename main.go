@@ -108,24 +108,31 @@ func SwitchRelay(pin uint8, state string) {
 	defer rpio.Close()
 
 	var rt time.Time
+	var dt time.Time
 
-	rpio.Pin(pin).Output()
-	if state == "on" {
-		rt = time.Now().Local().Add(time.Minute * 3)
-		rpio.Pin(pin).Low()
-	} else {
-		rpio.Pin(pin).High()
-		rt = time.Now().Local()
-	}
 	fmt.Println("Before receive rr")
 	r := read()
-	fmt.Println(r)
 
 	for i, p := range r {
 		if p.Pin == pin {
+			rpio.Pin(pin).Output()
+			if state == "on" {
+				if rpio.Pin(pin).Read() == 0 {
+					dt = p.DutyTime
+					rt = time.Now().Local().Add(time.Minute * 3)
+				} else {
+					rt = time.Now().Local().Add(time.Minute * 3)
+					dt = time.Now().Local()
+					rpio.Pin(pin).Low()
+				}
+			} else {
+				rpio.Pin(pin).High()
+				rt = time.Now().Local()
+				time.Now().Local()
+			}
 			var rel []Relay
 			rel = r[:i]
-			rel = append(rel, Relay{p.ID, p.Description, p.Pin, uint8(rpio.Pin(pin).Read()), rt, time.Now().Local()})
+			rel = append(rel, Relay{p.ID, p.Description, p.Pin, uint8(rpio.Pin(pin).Read()), rt, dt})
 			if len(r) > i {
 				rel = append(r, rel[i+1:]...)
 			}
@@ -149,14 +156,19 @@ func DutyCycle() {
 	var rel []Relay
 
 	for _, p := range r {
+		rpio.Pin(p.Pin).Output()
 		if p.RunTill.Sub(time.Now()) > 0 {
-			rpio.Pin(p.Pin).Output()
 			if p.State == 1 {
-				rpio.Pin(p.Pin).Low()
+				if p.DutyTime.Sub(time.Now().Add(time.Second*100)) < 0 {
+					rpio.Pin(p.Pin).Low()
+					dt = time.Now().Local()
+				} else {
+					dt = p.DutyTime
+				}
 			} else {
 				rpio.Pin(p.Pin).High()
+				dt = time.Now().Local()
 			}
-			dt = time.Now().Local()
 		}
 		dt = p.DutyTime
 		rel = append(rel, Relay{p.ID, p.Description, p.Pin, uint8(rpio.Pin(p.Pin).Read()), p.RunTill, dt})
