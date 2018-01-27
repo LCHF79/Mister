@@ -41,6 +41,7 @@ var relays []Relay
 
 // ScheduleCheckTemps func
 func ScheduleCheckTemps(rr chan []Relay, wr chan []Relay) {
+	fmt.Println("Schedule func started")
 	ticker := time.NewTicker(60 * time.Second)
 	quit := make(chan struct{})
 	go func() {
