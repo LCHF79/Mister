@@ -163,9 +163,9 @@ func DutyCycle() {
 // WriteRelay func
 func WriteRelay(rr chan []Relay, wr chan []Relay) {
 	fmt.Println("Start write relay func")
-	if wr != nil {
-		relays = <-wr
-	}
+	//if wr != nil {
+	//	relays = <-wr
+	//}
 	rr <- relays
 	fmt.Println("End of wr func")
 }
