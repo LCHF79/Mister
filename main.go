@@ -268,7 +268,7 @@ func main() {
 	mw := io.MultiWriter(os.Stdout, logFile)
 	log.SetOutput(mw)
 
-	err = endless.ListenAndServe("localhost:80", mux)
+	err = endless.ListenAndServe(":80", mux)
 	if err != nil {
 		panic(err)
 	}
