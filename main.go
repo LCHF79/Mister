@@ -121,12 +121,13 @@ func SwitchRelay(pin uint8, state string) {
 
 	for i, p := range r {
 		if p.Pin == pin {
-			r = r[:i]
-			r = append(r, Relay{p.ID, p.Description, p.Pin, uint8(rpio.Pin(pin).Read()), rt})
+			var rel []Relay
+			rel = r[:i]
+			rel = append(rel, Relay{p.ID, p.Description, p.Pin, uint8(rpio.Pin(pin).Read()), rt})
 			if len(r) > i {
-				r = append(r, r[i+1:]...)
+				rel = append(r, rel[i+1:]...)
 			}
-			write(r)
+			write(rel)
 			fmt.Println(relays)
 		}
 	}
