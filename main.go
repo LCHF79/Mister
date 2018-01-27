@@ -151,8 +151,8 @@ func DutyCycle() {
 			}
 			r := relays[:i]
 			r = append(r, Relay{p.ID, p.Description, p.Pin, uint8(rpio.Pin(p.Pin).Read()), time.Now().Local().Add(time.Minute * 30)})
-			if len(relays) > i {
-				r = append(r, relays[i+1:]...)
+			if len(r) > i {
+				r = append(r, r[i+1:]...)
 			}
 			fmt.Println(r[:])
 		}
