@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 
 	rpio "github.com/stianeikeland/go-rpio"
@@ -38,15 +39,15 @@ type Response struct {
 
 var temps []Sensor
 var relays []Relay
+var lock = sync.RWMutex{}
 
 // ScheduleCheckTemps func
-func ScheduleCheckTemps(rr chan []Relay, wr chan []Relay) {
+func ScheduleCheckTemps() {
 	fmt.Println("Schedule func started")
 	ticker := time.NewTicker(60 * time.Second)
 	quit := make(chan struct{})
 	go func() {
 		for {
-			go WriteRelay(rr, wr)
 			select {
 			case <-ticker.C:
 				go CheckTemps()
@@ -86,19 +87,17 @@ func GetTemps(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleSwitch func
-func HandleSwitch(rr chan []Relay, wr chan []Relay) func(http.ResponseWriter, *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		fmt.Printf("%v\n", r.URL.String())
-		p := r.FormValue("pin")
-		q, _ := strconv.ParseInt(p, 10, 8)
-		s := uint8(q)
-		SwitchRelay(s, r.FormValue("state"), rr, wr)
-		TestTemplate(w, r)
-	}
+func HandleSwitch(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("%v\n", r.URL.String())
+	p := r.FormValue("pin")
+	q, _ := strconv.ParseInt(p, 10, 8)
+	s := uint8(q)
+	SwitchRelay(s, r.FormValue("state"))
+	TestTemplate(w, r)
 }
 
 // SwitchRelay func
-func SwitchRelay(pin uint8, state string, rr chan []Relay, wr chan []Relay) {
+func SwitchRelay(pin uint8, state string) {
 	err := rpio.Open()
 	if err != nil {
 		fmt.Printf(err.Error())
@@ -117,7 +116,7 @@ func SwitchRelay(pin uint8, state string, rr chan []Relay, wr chan []Relay) {
 		rt = time.Now().Local()
 	}
 	fmt.Println("Before receive rr")
-	r := <-rr
+	r := read()
 	fmt.Println("After receive rr")
 
 	for i, p := range r {
@@ -127,7 +126,7 @@ func SwitchRelay(pin uint8, state string, rr chan []Relay, wr chan []Relay) {
 			if len(r) > i {
 				r = append(r, r[i+1:]...)
 			}
-			wr <- r
+			write(r)
 			fmt.Println(relays)
 		}
 	}
@@ -158,16 +157,6 @@ func DutyCycle() {
 			fmt.Println(r)
 		}
 	}
-}
-
-// WriteRelay func
-func WriteRelay(rr chan []Relay, wr chan []Relay) {
-	fmt.Println("Start write relay func")
-	//if wr != nil {
-	//	relays = <-wr
-	//}
-	rr <- relays
-	fmt.Println("End of wr func")
 }
 
 // TestTemplate func
@@ -246,14 +235,11 @@ func InitRelays() {
 
 // main function to boot up everything
 func main() {
-	wr := make(chan []Relay)
-	rr := make(chan []Relay)
-	hSwitch := HandleSwitch(wr, rr)
-	ScheduleCheckTemps(rr, wr)
+	ScheduleCheckTemps()
 	InitRelays()
 	mux := http.NewServeMux()
 	mux.HandleFunc("/temp", GetTemps)
-	mux.HandleFunc("/switch", hSwitch)
+	mux.HandleFunc("/switch", HandleSwitch)
 	mux.HandleFunc("/", TestTemplate)
 
 	logFile, err := os.OpenFile("log.txt", os.O_CREATE|os.O_APPEND|os.O_RDWR, 0666)
@@ -270,4 +256,18 @@ func main() {
 	}
 	log.Fatal(srv.ListenAndServe())
 
+}
+
+func read() []Relay {
+	lock.RLock()
+	defer lock.RUnlock()
+	var r []Relay
+	r = append(r, relays...)
+	return r
+}
+
+func write(r []Relay) {
+	lock.Lock()
+	defer lock.Unlock()
+	relays = r
 }
