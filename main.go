@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fvbock/endless"
 	rpio "github.com/stianeikeland/go-rpio"
 	"github.com/yryz/ds18b20"
 )
@@ -266,14 +267,11 @@ func main() {
 	}
 	mw := io.MultiWriter(os.Stdout, logFile)
 	log.SetOutput(mw)
-	srv := &http.Server{
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 5 * time.Second,
-		Addr:         ":80",
-		Handler:      mux,
-	}
-	log.Fatal(srv.ListenAndServe())
 
+	err = endless.ListenAndServe("localhost:80", mux)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func read() []Relay {
