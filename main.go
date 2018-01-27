@@ -115,8 +115,9 @@ func SwitchRelay(pin uint8, state string, rr chan []Relay, wr chan []Relay) {
 		rpio.Pin(pin).High()
 		rt = time.Now().Local()
 	}
-
+	fmt.Println("Before receive rr")
 	r := <-rr
+	fmt.Println("After receive rr")
 
 	for i, p := range r {
 		if p.Pin == pin {
@@ -160,10 +161,12 @@ func DutyCycle() {
 
 // WriteRelay func
 func WriteRelay(rr chan []Relay, wr chan []Relay) {
+	fmt.Println("Start write relay func")
 	if wr != nil {
 		relays = <-wr
 	}
 	rr <- relays
+	fmt.Println("End of wr func")
 }
 
 // TestTemplate func
