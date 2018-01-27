@@ -117,7 +117,7 @@ func SwitchRelay(pin uint8, state string) {
 	}
 	fmt.Println("Before receive rr")
 	r := read()
-	fmt.Println("After receive rr")
+	fmt.Println(r)
 
 	for i, p := range r {
 		if p.Pin == pin {
@@ -154,7 +154,7 @@ func DutyCycle() {
 			if len(relays) > i {
 				r = append(r, relays[i+1:]...)
 			}
-			fmt.Println(r)
+			fmt.Println(r[:])
 		}
 	}
 }
