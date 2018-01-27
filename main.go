@@ -216,7 +216,8 @@ func InitRelays() {
 	}
 	defer rpio.Close()
 
-	relays = append(relays, Relay{
+	var r []Relay
+	r = append(r, Relay{
 		ID:          2,
 		Description: "System A",
 		Pin:         6,
@@ -235,7 +236,7 @@ func InitRelays() {
 			State:       uint8(rpio.Pin(8).Read()),
 		},
 	)
-
+	write(r)
 }
 
 // main function to boot up everything
