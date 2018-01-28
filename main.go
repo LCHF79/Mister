@@ -67,7 +67,7 @@ func CheckTemps() {
 	temps = nil
 	sensors, err := ds18b20.Sensors()
 	if err != nil {
-		//panic(err)
+		log.Println(err)
 	}
 
 	for _, sensor := range sensors {
@@ -75,6 +75,8 @@ func CheckTemps() {
 		if err == nil {
 			fmt.Printf("sensor: %s temperature: %.2f°C\n", sensor, t)
 			temps = append(temps, Sensor{ID: sensor, Value: t})
+		} else {
+			log.Println(err)
 		}
 	}
 }
@@ -103,7 +105,7 @@ func HandleSwitch(w http.ResponseWriter, r *http.Request) {
 func SwitchRelay(pin uint8, state string) {
 	err := rpio.Open()
 	if err != nil {
-		fmt.Printf(err.Error())
+		log.Println(err)
 		os.Exit(1)
 	}
 	defer rpio.Close()
@@ -147,7 +149,7 @@ func SwitchRelay(pin uint8, state string) {
 func DutyCycle() {
 	err := rpio.Open()
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		os.Exit(1)
 	}
 	defer rpio.Close()
@@ -224,7 +226,7 @@ func ToggleState(s uint8) string {
 func InitRelays() {
 	err := rpio.Open()
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		os.Exit(1)
 	}
 	defer rpio.Close()
@@ -270,7 +272,7 @@ func main() {
 
 	err = endless.ListenAndServe(":80", mux)
 	if err != nil {
-		panic(err)
+		log.Println(err)
 	}
 }
 
@@ -286,4 +288,10 @@ func write(r []Relay) {
 	lock.Lock()
 	defer lock.Unlock()
 	relays = r
+}
+
+func readRW() []Relay {
+	var r []Relay
+	r = append(r, relays...)
+	return r
 }
