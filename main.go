@@ -103,13 +103,6 @@ func HandleSwitch(w http.ResponseWriter, r *http.Request) {
 
 // SwitchRelay func
 func SwitchRelay(pin uint8, state string) {
-	err := rpio.Open()
-	if err != nil {
-		log.Println(err)
-		os.Exit(1)
-	}
-	defer rpio.Close()
-
 	var rt time.Time
 	var dt time.Time
 
@@ -147,13 +140,6 @@ func SwitchRelay(pin uint8, state string) {
 
 // DutyCycle func
 func DutyCycle() {
-	err := rpio.Open()
-	if err != nil {
-		log.Println(err)
-		os.Exit(1)
-	}
-	defer rpio.Close()
-
 	var dt time.Time
 	r := read()
 	var rel []Relay
@@ -224,13 +210,6 @@ func ToggleState(s uint8) string {
 
 // InitRelays func
 func InitRelays() {
-	err := rpio.Open()
-	if err != nil {
-		log.Println(err)
-		os.Exit(1)
-	}
-	defer rpio.Close()
-
 	var r []Relay
 	r = append(r, Relay{
 		ID:          2,
@@ -256,6 +235,12 @@ func InitRelays() {
 
 // main function to boot up everything
 func main() {
+	err := rpio.Open()
+	if err != nil {
+		log.Println(err)
+		os.Exit(1)
+	}
+	defer rpio.Close()
 	ScheduleCheckTemps()
 	InitRelays()
 	mux := http.NewServeMux()
