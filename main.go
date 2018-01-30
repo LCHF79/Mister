@@ -265,7 +265,7 @@ func main() {
 		log.Println(err)
 	}
 }
-
+/*
 func ToggleRPIO() {
 	for {
 		quit := make(chan struct{})
@@ -288,7 +288,7 @@ func ToggleRPIO() {
 		}()
 	}
 }
-
+*/
 func read() []Relay {
 	lock.RLock()
 	defer lock.RUnlock()
