@@ -146,7 +146,11 @@ func DutyCycle() {
 
 	for _, p := range r {
 		rpio.Pin(p.Pin).Output()
-		if p.RunTill.Sub(time.Now()) > 0 {
+		if p.RunTill.Sub(time.Now()) < 0 {
+			if uint8(rpio.Pin(p.Pin).Read()) == 0 {
+				rpio.Pin(p.Pin).High()
+			}
+			/*
 			if p.State == 1 {
 				if p.DutyTime.Sub(time.Now().Add(time.Second*100)) < 0 {
 					rpio.Pin(p.Pin).Low()
@@ -158,6 +162,7 @@ func DutyCycle() {
 				rpio.Pin(p.Pin).High()
 				dt = time.Now().Local()
 			}
+			*/
 		}
 		dt = p.DutyTime
 		rel = append(rel, Relay{p.ID, p.Description, p.Pin, uint8(rpio.Pin(p.Pin).Read()), p.RunTill, dt})
@@ -215,19 +220,19 @@ func InitRelays() {
 		ID:          2,
 		Description: "System A",
 		Pin:         6,
-		State:       uint8(rpio.Pin(6).Read()),
+		State:       1,
 	},
 		Relay{
 			ID:          3,
 			Description: "System B",
 			Pin:         7,
-			State:       uint8(rpio.Pin(7).Read()),
+			State:       1,
 		},
 		Relay{
 			ID:          4,
 			Description: "System C",
 			Pin:         8,
-			State:       uint8(rpio.Pin(8).Read()),
+			State:       1,
 		},
 	)
 	write(r)
@@ -258,6 +263,29 @@ func main() {
 	err = endless.ListenAndServe(":80", mux)
 	if err != nil {
 		log.Println(err)
+	}
+}
+
+func ToggleRPIO() {
+	for {
+		quit := make(chan struct{})
+		r := make(chan Relay)
+		go func() {
+			for {
+				select {
+				case <-r:
+					if r.State == 1 {
+						rpio.Pin(r.Pin).High()
+					} else {
+						rpio.Pin(r.Pin).Low()
+					}
+					
+				case <-quit:
+					ticker.Stop()
+					return
+				}
+			}
+		}()
 	}
 }
 
