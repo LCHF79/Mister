@@ -292,6 +292,7 @@ func main() {
 	mux.HandleFunc("/switch", HandleSwitch)
 	mux.HandleFunc("/", TestTemplate)
 	mux.HandleFunc("/album", showAlbum)
+	http.HandleFunc("/like", addLike)
 
 	logFile, err := os.OpenFile("log.txt", os.O_CREATE|os.O_APPEND|os.O_RDWR, 0666)
 	if err != nil {
@@ -439,4 +440,97 @@ func populateAlbum(reply map[string]string) (*Album, error) {
 		return nil, err
 	}
 	return ab, nil
+}
+
+func incrementLikes(id string) error {
+	conn, err := db.Get()
+	if err != nil {
+		return err
+	}
+	defer db.Put(conn)
+
+	// Before we do anything else, check that an album with the given id
+	// exists. The EXISTS command returns 1 if a specific key exists
+	// in the database, and 0 if it doesn't.
+	exists, err := conn.Cmd("EXISTS", "album:"+id).Int()
+	if err != nil {
+		return err
+	} else if exists == 0 {
+		return errNoAlbum
+	}
+
+	// Use the MULTI command to inform Redis that we are starting a new
+	// transaction.
+	err = conn.Cmd("MULTI").Err
+	if err != nil {
+		return err
+	}
+
+	// Increment the number of likes in the album hash by 1. Because it
+	// follows a MULTI command, this HINCRBY command is NOT executed but
+	// it is QUEUED as part of the transaction. We still need to check
+	// the reply's Err field at this point in case there was a problem
+	// queueing the command.
+	err = conn.Cmd("HINCRBY", "album:"+id, "likes", 1).Err
+	if err != nil {
+		return err
+	}
+	// And we do the same with the increment on our sorted set.
+	err = conn.Cmd("ZINCRBY", "likes", 1, id).Err
+	if err != nil {
+		return err
+	}
+
+	// Execute both commands in our transaction together as an atomic group.
+	// EXEC returns the replies from both commands as an array reply but,
+	// because we're not interested in either reply in this example, it
+	// suffices to simply check the reply's Err field for any errors.
+	err = conn.Cmd("EXEC").Err
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func addLike(w http.ResponseWriter, r *http.Request) {
+	// Unless the request is using the POST method, return a 405 'Method Not
+	// Allowed' response.
+	if r.Method != "POST" {
+		w.Header().Set("Allow", "POST")
+		http.Error(w, http.StatusText(405), 405)
+		return
+	}
+
+	// Retreive the id from the POST request body. If there is no parameter
+	// named "id" in the request body then PostFormValue() will return an
+	// empty string. We check for this, returning a 400 Bad Request response
+	// if it's missing.
+	id := r.PostFormValue("id")
+	if id == "" {
+		http.Error(w, http.StatusText(400), 400)
+		return
+	}
+	// Validate that the id is a valid integer by trying to convert it,
+	// returning a 400 Bad Request response if the conversion fails.
+	if _, err := strconv.Atoi(id); err != nil {
+		http.Error(w, http.StatusText(400), 400)
+		return
+	}
+
+	// Call the IncrementLikes() function passing in the user-provided id. If
+	// there's no album found with that id, return a 404 Not Found response.
+	// In the event of any other errors, return a 500 Internal Server Error
+	// response.
+	err := incrementLikes(id)
+	if err == errNoAlbum {
+		http.NotFound(w, r)
+		return
+	} else if err != nil {
+		http.Error(w, http.StatusText(500), 500)
+		return
+	}
+
+	// Redirect the client to the GET /ablum route, so they can see the
+	// impact their like has had.
+	http.Redirect(w, r, "/album?id="+id, 303)
 }
