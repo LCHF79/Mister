@@ -292,7 +292,7 @@ func main() {
 	mux.HandleFunc("/switch", HandleSwitch)
 	mux.HandleFunc("/", TestTemplate)
 	mux.HandleFunc("/album", showAlbum)
-	http.HandleFunc("/like", addLike)
+	mux.HandleFunc("/like", addLike)
 
 	logFile, err := os.OpenFile("log.txt", os.O_CREATE|os.O_APPEND|os.O_RDWR, 0666)
 	if err != nil {
