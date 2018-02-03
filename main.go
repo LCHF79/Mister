@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/fvbock/endless"
-	"github.com/mediocregopher/radix.v3/redis"
+	"github.com/mediocregopher/radix.v2/redis"
 	rpio "github.com/stianeikeland/go-rpio"
 	"github.com/yryz/ds18b20"
 )
@@ -152,17 +152,17 @@ func DutyCycle() {
 				rpio.Pin(p.Pin).High()
 			}
 			/*
-			if p.State == 1 {
-				if p.DutyTime.Sub(time.Now().Add(time.Second*100)) < 0 {
-					rpio.Pin(p.Pin).Low()
-					dt = time.Now().Local()
+				if p.State == 1 {
+					if p.DutyTime.Sub(time.Now().Add(time.Second*100)) < 0 {
+						rpio.Pin(p.Pin).Low()
+						dt = time.Now().Local()
+					} else {
+						dt = p.DutyTime
+					}
 				} else {
-					dt = p.DutyTime
+					rpio.Pin(p.Pin).High()
+					dt = time.Now().Local()
 				}
-			} else {
-				rpio.Pin(p.Pin).High()
-				dt = time.Now().Local()
-			}
 			*/
 		}
 		dt = p.DutyTime
@@ -278,6 +278,7 @@ func main() {
 
 	fmt.Println("Electric Ladyland added!!")
 }
+
 /*
 func ToggleRPIO() {
 	for {
@@ -292,7 +293,7 @@ func ToggleRPIO() {
 					} else {
 						rpio.Pin(r.Pin).Low()
 					}
-					
+
 				case <-quit:
 					ticker.Stop()
 					return
