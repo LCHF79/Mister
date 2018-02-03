@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"io"
@@ -13,10 +14,22 @@ import (
 	"time"
 
 	"github.com/fvbock/endless"
+	"github.com/mediocregopher/radix.v2/pool"
 	"github.com/mediocregopher/radix.v2/redis"
 	rpio "github.com/stianeikeland/go-rpio"
 	"github.com/yryz/ds18b20"
 )
+
+var db *pool.Pool
+var errNoAlbum = errors.New("models: no album found")
+
+//Album struct
+type Album struct {
+	Title  string
+	Artist string
+	Price  float64
+	Likes  int
+}
 
 //Sensor struct
 type Sensor struct {
@@ -43,6 +56,16 @@ type Response struct {
 var temps []Sensor
 var relays []Relay
 var lock = sync.RWMutex{}
+
+func init() {
+	var err error
+	// Establish a pool of 10 connections to the Redis server listening on
+	// port 6379 of the local machine.
+	db, err = pool.New("tcp", "localhost:6379", 10)
+	if err != nil {
+		log.Panic(err)
+	}
+}
 
 // ScheduleCheckTemps func
 func ScheduleCheckTemps() {
@@ -237,6 +260,16 @@ func InitRelays() {
 		},
 	)
 	write(r)
+	conn, err := db.Get()
+	if err != nil {
+		panic(err)
+	}
+	resp := conn.Cmd("HMSET", "album:1", "title", "Electric Ladyland", "artist", "Jimi Hendrix", "price", 4.95, "likes", 8)
+	// Check the Err field of the *Resp object for any errors.
+	if resp.Err != nil {
+		log.Fatal(resp.Err)
+	}
+
 }
 
 // main function to boot up everything
@@ -258,6 +291,7 @@ func main() {
 	mux.HandleFunc("/temp", GetTemps)
 	mux.HandleFunc("/switch", HandleSwitch)
 	mux.HandleFunc("/", TestTemplate)
+	mux.HandleFunc("/album", showAlbum)
 
 	logFile, err := os.OpenFile("log.txt", os.O_CREATE|os.O_APPEND|os.O_RDWR, 0666)
 	if err != nil {
@@ -266,10 +300,6 @@ func main() {
 	mw := io.MultiWriter(os.Stdout, logFile)
 	log.SetOutput(mw)
 
-	err = endless.ListenAndServe(":80", mux)
-	if err != nil {
-		log.Println(err)
-	}
 	resp := conn.Cmd("HMSET", "album:1", "title", "Electric Ladyland", "artist", "Jimi Hendrix", "price", 4.95, "likes", 8)
 	// Check the Err field of the *Resp object for any errors.
 	if resp.Err != nil {
@@ -277,6 +307,11 @@ func main() {
 	}
 
 	fmt.Println("Electric Ladyland added!!")
+	err = endless.ListenAndServe(":80", mux)
+	if err != nil {
+		log.Println(err)
+	}
+
 }
 
 /*
@@ -303,6 +338,7 @@ func ToggleRPIO() {
 	}
 }
 */
+
 func read() []Relay {
 	lock.RLock()
 	defer lock.RUnlock()
@@ -321,4 +357,86 @@ func readRW() []Relay {
 	var r []Relay
 	r = append(r, relays...)
 	return r
+}
+
+func showAlbum(w http.ResponseWriter, r *http.Request) {
+	// Unless the request is using the GET method, return a 405 'Method Not
+	// Allowed' response.
+	if r.Method != "GET" {
+		w.Header().Set("Allow", "GET")
+		http.Error(w, http.StatusText(405), 405)
+		return
+	}
+
+	// Retrieve the id from the request URL query string. If there is no id
+	// key in the query string then Get() will return an empty string. We
+	// check for this, returning a 400 Bad Request response if it's missing.
+	id := r.URL.Query().Get("id")
+	if id == "" {
+		http.Error(w, http.StatusText(400), 400)
+		return
+	}
+	// Validate that the id is a valid integer by trying to convert it,
+	// returning a 400 Bad Request response if the conversion fails.
+	if _, err := strconv.Atoi(id); err != nil {
+		http.Error(w, http.StatusText(400), 400)
+		return
+	}
+
+	// Call the FindAlbum() function passing in the user-provided id. If
+	// there's no matching album found, return a 404 Not Found response. In
+	// the event of any other errors, return a 500 Internal Server Error
+	// response.
+	bk, err := findAlbum(id)
+	if err == errNoAlbum {
+		http.NotFound(w, r)
+		return
+	} else if err != nil {
+		http.Error(w, http.StatusText(500), 500)
+		return
+	}
+
+	// Write the album details as plain text to the client.
+	fmt.Fprintf(w, "%s by %s: £%.2f [%d likes] \n", bk.Title, bk.Artist, bk.Price, bk.Likes)
+}
+func findAlbum(id string) (*Album, error) {
+	// Use the connection pool's Get() method to fetch a single Redis
+	// connection from the pool.
+	conn, err := db.Get()
+	if err != nil {
+		return nil, err
+	}
+	// Importantly, use defer and the connection pool's Put() method to ensure
+	// that the connection is always put back in the pool before FindAlbum()
+	// exits.
+	defer db.Put(conn)
+
+	// Fetch the details of a specific album. If no album is found with the
+	// given id, the map[string]string returned by the Map() helper method
+	// will be empty. So we can simply check whether it's length is zero and
+	// return an ErrNoAlbum message if necessary.
+	reply, err := conn.Cmd("HGETALL", "album:"+id).Map()
+	if err != nil {
+		return nil, err
+	} else if len(reply) == 0 {
+		return nil, errNoAlbum
+	}
+
+	return populateAlbum(reply)
+}
+
+func populateAlbum(reply map[string]string) (*Album, error) {
+	var err error
+	ab := new(Album)
+	ab.Title = reply["title"]
+	ab.Artist = reply["artist"]
+	ab.Price, err = strconv.ParseFloat(reply["price"], 64)
+	if err != nil {
+		return nil, err
+	}
+	ab.Likes, err = strconv.Atoi(reply["likes"])
+	if err != nil {
+		return nil, err
+	}
+	return ab, nil
 }
