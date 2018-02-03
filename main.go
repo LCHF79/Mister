@@ -246,7 +246,7 @@ func main() {
 		log.Fatal(err)
 	}
 	defer conn.Close()
-	err := rpio.Open()
+	err = rpio.Open()
 	if err != nil {
 		log.Println(err)
 		os.Exit(1)
