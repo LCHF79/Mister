@@ -391,18 +391,16 @@ func rRead() []Relay {
 	return r
 }
 
-func rWrite(r []Relay) {
+func rWrite(r Relay) {
 	conn, err := db.Get()
 	if err != nil {
 		panic(err)
 	}
 	defer db.Put(conn)
-
-	resp := conn.Cmd("HMSET", "ID:"+r.ID, "Description", r.Description, "Pin", r.Pin, "State", r.State)
+	resp := conn.Cmd("HMSET", "ID:"+strconv.Itoa(r.ID), "Description", r.Description, "Pin", r.Pin, "State", r.State)
 	if resp.Err != nil {
 		log.Fatal(resp.Err)
 	}
-	relays = r
 }
 
 func readRW() []Relay {
