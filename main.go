@@ -264,7 +264,37 @@ func InitRelays() {
 	if err != nil {
 		panic(err)
 	}
-	resp := conn.Cmd("HMSET", "album:1", "title", "Electric Ladyland", "artist", "Jimi Hendrix", "price", 4.95, "likes", 8)
+	defer db.Put(conn)
+
+	resp := conn.Cmd("HMSET", "ID:2", "Description", "System A", "Pin", 6, "State", 1)
+	if resp.Err != nil {
+		log.Fatal(resp.Err)
+	}
+	resp = conn.Cmd("HMSET", "ID:3", "Description", "System B", "Pin", 7, "State", 1)
+	if resp.Err != nil {
+		log.Fatal(resp.Err)
+	}
+	resp = conn.Cmd("HMSET", "ID:4", "Description", "System C", "Pin", 8, "State", 1)
+	if resp.Err != nil {
+		log.Fatal(resp.Err)
+	}
+	resp = conn.Cmd("HMSET", "album:1", "title", "Electric Ladyland", "artist", "Jimi Hendrix", "price", 4.95, "likes", 8)
+	if resp.Err != nil {
+		log.Fatal(resp.Err)
+	}
+	resp = conn.Cmd("HMSET", "album:2", "title", "Back in Black", "artist", "AC/DC", "price", 5.95, "likes", 3)
+	if resp.Err != nil {
+		log.Fatal(resp.Err)
+	}
+	resp = conn.Cmd("HMSET", "album:3", "title", "Rumours", "artist", "Fleetwood Mac", "price", 7.95, "likes", 7)
+	if resp.Err != nil {
+		log.Fatal(resp.Err)
+	}
+	resp = conn.Cmd("HMSET", "album:4", "title", "Nevermind", "artist", "Nirvana", "price", 8.95, "likes", 11)
+	if resp.Err != nil {
+		log.Fatal(resp.Err)
+	}
+	resp = conn.Cmd("ZADD", "likes", 8, 1, 3, 2, 12, 3, 8, 4)
 	// Check the Err field of the *Resp object for any errors.
 	if resp.Err != nil {
 		log.Fatal(resp.Err)
@@ -352,6 +382,26 @@ func read() []Relay {
 func write(r []Relay) {
 	lock.Lock()
 	defer lock.Unlock()
+	relays = r
+}
+
+func rRead() []Relay {
+	var r []Relay
+	r = append(r, relays...)
+	return r
+}
+
+func rWrite(r []Relay) {
+	conn, err := db.Get()
+	if err != nil {
+		panic(err)
+	}
+	defer db.Put(conn)
+
+	resp := conn.Cmd("HMSET", "ID:"+r.ID, "Description", r.Description, "Pin", r.Pin, "State", r.State)
+	if resp.Err != nil {
+		log.Fatal(resp.Err)
+	}
 	relays = r
 }
 
