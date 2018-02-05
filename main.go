@@ -385,13 +385,51 @@ func write(r []Relay) {
 	relays = r
 }
 
-func rRead() []Relay {
-	var r []Relay
-	r = append(r, relays...)
-	return r
+func rRead() ([]Relay, error) {
+	// Use the connection pool's Get() method to fetch a single Redis
+	// connection from the pool.
+	conn, err := db.Get()
+	if err != nil {
+		return nil, err
+	}
+	// Importantly, use defer and the connection pool's Put() method to ensure
+	// that the connection is always put back in the pool before FindAlbum()
+	// exits.
+	defer db.Put(conn)
+
+	// Fetch the details of a specific album. If no album is found with the
+	// given id, the map[string]string returned by the Map() helper method
+	// will be empty. So we can simply check whether it's length is zero and
+	// return an ErrNoAlbum message if necessary.
+	reply, err := conn.Cmd("HGETALL", id).Map()
+	if err != nil {
+		return nil, err
+	} else if len(reply) == 0 {
+		return nil, errNoAlbum
+	}
+
+	return populateRelay(reply)
 }
 
-func rWrite(r Relay) {
+func populateRelay(reply map[string]string) (*Relay, error) {
+	var err error
+	rel := new(Relay)
+	rel.ID = reply["ID"]
+	rel.Pin = reply["Pin"]
+	rel.Pin = reply["Pin"]
+	rel.Pin = reply["Pin"]
+	rel.Description = reply["Description"] //, err = strconv.ParseFloat(reply["price"], 64)
+	if err != nil {
+		return nil, err
+	}
+	rel.Likes, err = strconv.Atoi(reply["likes"])
+	if err != nil {
+		return nil, err
+	}
+	return ab, nil
+}
+
+func rWrite(r *Relay) {
 	conn, err := db.Get()
 	if err != nil {
 		panic(err)
