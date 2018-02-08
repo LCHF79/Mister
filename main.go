@@ -56,6 +56,7 @@ type Response struct {
 var temps []Sensor
 var relays []Relay
 var lock = sync.RWMutex{}
+var systems [3]string
 
 func init() {
 	var err error
@@ -131,8 +132,10 @@ func SwitchRelay(pin uint8, state string) {
 	var dt time.Time
 
 	fmt.Println("Before receive rr")
-	r := read()
-
+	r, err := rRead()
+	if err != nil {
+		log.Println(err)
+	}
 	for i, p := range r {
 		if p.Pin == pin {
 			rpio.Pin(pin).Output()
@@ -278,6 +281,10 @@ func InitRelays() {
 	if resp.Err != nil {
 		log.Fatal(resp.Err)
 	}
+	systems[0] = "ID:2"
+	systems[1] = "ID:3"
+	systems[2] = "ID:4"
+
 	resp = conn.Cmd("HMSET", "album:1", "title", "Electric Ladyland", "artist", "Jimi Hendrix", "price", 4.95, "likes", 8)
 	if resp.Err != nil {
 		log.Fatal(resp.Err)
@@ -388,6 +395,7 @@ func write(r []Relay) {
 func rRead() ([]Relay, error) {
 	// Use the connection pool's Get() method to fetch a single Redis
 	// connection from the pool.
+	var r []Relay
 	conn, err := db.Get()
 	if err != nil {
 		return nil, err
@@ -401,32 +409,31 @@ func rRead() ([]Relay, error) {
 	// given id, the map[string]string returned by the Map() helper method
 	// will be empty. So we can simply check whether it's length is zero and
 	// return an ErrNoAlbum message if necessary.
-	reply, err := conn.Cmd("HGETALL", id).Map()
-	if err != nil {
-		return nil, err
-	} else if len(reply) == 0 {
-		return nil, errNoAlbum
+	var pp int64
+	var ss int64
+	var rt int64
+	var dt int64
+	for s := range systems {
+		reply, err := conn.Cmd("HGETALL", s).Map()
+		if err != nil {
+			return nil, err
+		} else if len(reply) == 0 {
+			return nil, errNoAlbum
+		}
+		pp, _ = strconv.ParseInt(reply["Pin"], 0, 64)
+		ss, _ = strconv.ParseInt(reply["State"], 0, 64)
+		rt, _ = strconv.ParseInt(reply["RunTill"], 0, 64)
+		dt, _ = strconv.ParseInt(reply["DutyTime"], 0, 64)
+		r = append(r, Relay{
+			Description: reply["Description"],
+			Pin:         uint8(pp),
+			State:       uint8(ss),
+			RunTill:     time.Unix(rt, 0),
+			DutyTime:    time.Unix(dt, 0),
+		})
 	}
 
-	return populateRelay(reply)
-}
-
-func populateRelay(reply map[string]string) (*Relay, error) {
-	var err error
-	rel := new(Relay)
-	rel.ID = reply["ID"]
-	rel.Pin = reply["Pin"]
-	rel.Pin = reply["Pin"]
-	rel.Pin = reply["Pin"]
-	rel.Description = reply["Description"] //, err = strconv.ParseFloat(reply["price"], 64)
-	if err != nil {
-		return nil, err
-	}
-	rel.Likes, err = strconv.Atoi(reply["likes"])
-	if err != nil {
-		return nil, err
-	}
-	return ab, nil
+	return r, nil
 }
 
 func rWrite(r *Relay) {
@@ -435,7 +442,7 @@ func rWrite(r *Relay) {
 		panic(err)
 	}
 	defer db.Put(conn)
-	resp := conn.Cmd("HMSET", "ID:"+strconv.Itoa(r.ID), "Description", r.Description, "Pin", r.Pin, "State", r.State)
+	resp := conn.Cmd("HMSET", "ID:"+strconv.Itoa(r.ID), "Description", r.Description, "Pin", r.Pin, "State", r.State, "RunTill", int64(r.RunTill.Unix()), "DutyTime", int64(r.DutyTime.Unix()))
 	if resp.Err != nil {
 		log.Fatal(resp.Err)
 	}
