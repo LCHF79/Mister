@@ -414,6 +414,7 @@ func rRead() ([]Relay, error) {
 	var rt int64
 	var dt int64
 	for s := range systems {
+		fmt.Println(s)
 		reply, err := conn.Cmd("HGETALL", s).Map()
 		if err != nil {
 			return nil, err
