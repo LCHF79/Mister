@@ -205,10 +205,10 @@ func TestTemplate(w http.ResponseWriter, r *http.Request) {
 		"GetStateClass": GetStateClass,
 	}
 	tmpl := template.Must(template.New("layout.html").Funcs(fmap).ParseFiles("layout.html"))
-
+	rel, _ := rRead()
 	res := Response{
 		Temperature: temps,
-		Relays:      relays,
+		Relays:      rel,
 	}
 	tmpl.Execute(w, res)
 }
