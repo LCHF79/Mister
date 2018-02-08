@@ -413,7 +413,7 @@ func rRead() ([]Relay, error) {
 	var ss int64
 	var rt int64
 	var dt int64
-	for s := range systems {
+	for _, s := range systems {
 		fmt.Println(s)
 		reply, err := conn.Cmd("HGETALL", s).Map()
 		if err != nil {
