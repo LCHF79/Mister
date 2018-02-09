@@ -148,11 +148,15 @@ func SwitchRelay(pin uint8, state string) {
 	if state == "on" {
 		st = 0
 		if rpio.Pin(pin).Read() == 0 {
-			t, err := strconv.ParseInt(reply["DutyTime"], 0, 64)
-			if err != nil {
-				panic(err)
+			if reply["DutyTime"] != "" {
+				t, err := strconv.ParseInt(reply["DutyTime"], 0, 64)
+				if err != nil {
+					panic(err)
+				}
+				dt = time.Unix(t, 0)
+			} else {
+				dt = time.Now().Local()
 			}
-			dt = time.Unix(t, 0)
 			rt = time.Now().Local().Add(time.Minute * 3)
 		} else {
 			rt = time.Now().Local().Add(time.Minute * 3)
