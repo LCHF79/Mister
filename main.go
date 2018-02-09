@@ -122,7 +122,7 @@ func GetTemps(w http.ResponseWriter, r *http.Request) {
 func HandleSwitch(w http.ResponseWriter, r *http.Request) {
 	userName := getUserName(r)
 	if userName == "" {
-		http.Redirect(w, r, "/", 302)
+		http.Redirect(w, r, "/aut", 302)
 		return
 	}
 	fmt.Printf("%v\n", r.URL.String())
@@ -230,7 +230,7 @@ func Switch() {
 func TestTemplate(w http.ResponseWriter, r *http.Request) {
 	userName := getUserName(r)
 	if userName == "" {
-		http.Redirect(w, r, "/", 302)
+		http.Redirect(w, r, "/auth", 302)
 		return
 	}
 	fmap := template.FuncMap{
@@ -365,6 +365,7 @@ func main() {
 	mux.HandleFunc("/album", showAlbum)
 	mux.HandleFunc("/like", addLike)
 	mux.HandleFunc("/popular", listPopular)
+	mux.HandleFunc("/auth", AuthFunc)
 
 	logFile, err := os.OpenFile("log.txt", os.O_CREATE|os.O_APPEND|os.O_RDWR, 0666)
 	if err != nil {
@@ -782,7 +783,7 @@ func loginHandler(response http.ResponseWriter, request *http.Request) {
 	if name != "" && pass != "" {
 		if name == "costas" && pass == "4BeachSt" {
 			setSession(name, response)
-			redirectTarget = "/internal"
+			redirectTarget = "/"
 		}
 
 	}
@@ -809,7 +810,8 @@ const indexPage = `
 </form>
 `
 
-func indexPageHandler(response http.ResponseWriter, request *http.Request) {
+// AuthFunc func
+func AuthFunc(response http.ResponseWriter, request *http.Request) {
 	fmt.Fprintf(response, indexPage)
 }
 
@@ -829,6 +831,6 @@ func internalPageHandler(response http.ResponseWriter, request *http.Request) {
 	if userName != "" {
 		fmt.Fprintf(response, internalPage, userName)
 	} else {
-		http.Redirect(response, request, "/", 302)
+		http.Redirect(response, request, "/auth", 302)
 	}
 }
