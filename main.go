@@ -14,12 +14,14 @@ import (
 	"time"
 
 	"github.com/fvbock/endless"
+	"github.com/gorilla/securecookie"
 	"github.com/mediocregopher/radix.v2/pool"
 	"github.com/mediocregopher/radix.v2/redis"
 	rpio "github.com/stianeikeland/go-rpio"
 	"github.com/yryz/ds18b20"
 )
 
+var cookieHandler = securecookie.New(securecookie.GenerateRandomKey(64), securecookie.GenerateRandomKey(32))
 var db *pool.Pool
 var errNoAlbum = errors.New("models: no album found")
 
@@ -118,6 +120,11 @@ func GetTemps(w http.ResponseWriter, r *http.Request) {
 
 // HandleSwitch func
 func HandleSwitch(w http.ResponseWriter, r *http.Request) {
+	userName := getUserName(r)
+	if userName == "" {
+		http.Redirect(w, r, "/", 302)
+		return
+	}
 	fmt.Printf("%v\n", r.URL.String())
 	p := r.FormValue("pin")
 	q, _ := strconv.ParseInt(p, 10, 8)
@@ -212,8 +219,20 @@ func DutyCycle() {
 	}
 }
 
+// Switch func
+func Switch() {
+	for {
+
+	}
+}
+
 // TestTemplate func
 func TestTemplate(w http.ResponseWriter, r *http.Request) {
+	userName := getUserName(r)
+	if userName == "" {
+		http.Redirect(w, r, "/", 302)
+		return
+	}
 	fmap := template.FuncMap{
 		"GetState":      GetState,
 		"ToggleState":   ToggleState,
@@ -717,5 +736,99 @@ func listPopular(w http.ResponseWriter, r *http.Request) {
 	// to the client.
 	for i, ab := range abs {
 		fmt.Fprintf(w, "%d) %s by %s: £%.2f [%d likes] \n", i+1, ab.Title, ab.Artist, ab.Price, ab.Likes)
+	}
+}
+
+func getUserName(request *http.Request) (userName string) {
+	if cookie, err := request.Cookie("session"); err == nil {
+		cookieValue := make(map[string]string)
+		if err = cookieHandler.Decode("session", cookie.Value, &cookieValue); err == nil {
+			userName = cookieValue["name"]
+		}
+	}
+	return userName
+}
+
+func setSession(userName string, response http.ResponseWriter) {
+	value := map[string]string{
+		"name": userName,
+	}
+	if encoded, err := cookieHandler.Encode("session", value); err == nil {
+		cookie := &http.Cookie{
+			Name:  "session",
+			Value: encoded,
+			Path:  "/",
+		}
+		http.SetCookie(response, cookie)
+	}
+}
+
+func clearSession(response http.ResponseWriter) {
+	cookie := &http.Cookie{
+		Name:   "session",
+		Value:  "",
+		Path:   "/",
+		MaxAge: -1,
+	}
+	http.SetCookie(response, cookie)
+}
+
+// login handler
+
+func loginHandler(response http.ResponseWriter, request *http.Request) {
+	name := request.FormValue("name")
+	pass := request.FormValue("password")
+	redirectTarget := "/"
+	if name != "" && pass != "" {
+		if name == "costas" && pass == "4BeachSt" {
+			setSession(name, response)
+			redirectTarget = "/internal"
+		}
+
+	}
+	http.Redirect(response, request, redirectTarget, 302)
+}
+
+// logout handler
+
+func logoutHandler(response http.ResponseWriter, request *http.Request) {
+	clearSession(response)
+	http.Redirect(response, request, "/", 302)
+}
+
+// index page
+
+const indexPage = `
+<h1>Login</h1>
+<form method="post" action="/login">
+    <label for="name">User name</label>
+    <input type="text" id="name" name="name">
+    <label for="password">Password</label>
+    <input type="password" id="password" name="password">
+    <button type="submit">Login</button>
+</form>
+`
+
+func indexPageHandler(response http.ResponseWriter, request *http.Request) {
+	fmt.Fprintf(response, indexPage)
+}
+
+// internal page
+
+const internalPage = `
+<h1>Internal</h1>
+<hr>
+<small>User: %s</small>
+<form method="post" action="/logout">
+    <button type="submit">Logout</button>
+</form>
+`
+
+func internalPageHandler(response http.ResponseWriter, request *http.Request) {
+	userName := getUserName(request)
+	if userName != "" {
+		fmt.Fprintf(response, internalPage, userName)
+	} else {
+		http.Redirect(response, request, "/", 302)
 	}
 }
