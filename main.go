@@ -170,10 +170,11 @@ func SwitchRelay(pin uint8, state string) {
 		dt = time.Now().Local()
 	}
 	rel := Relay{
-		Pin:      pin,
-		State:    st,
-		RunTill:  rt,
-		DutyTime: dt,
+		Description: reply["Description"],
+		Pin:         pin,
+		State:       st,
+		RunTill:     rt,
+		DutyTime:    dt,
 	}
 	rWrite(rel)
 	fmt.Println(rRead())
