@@ -130,39 +130,49 @@ func HandleSwitch(w http.ResponseWriter, r *http.Request) {
 func SwitchRelay(pin uint8, state string) {
 	var rt time.Time
 	var dt time.Time
+	var st uint8
 
-	fmt.Println("Before receive rr")
-	r, err := rRead()
+	conn, err := db.Get()
 	if err != nil {
-		log.Println(err)
+		panic(err)
 	}
-	for i, p := range r {
-		if p.Pin == pin {
-			rpio.Pin(pin).Output()
-			if state == "on" {
-				if rpio.Pin(pin).Read() == 0 {
-					dt = p.DutyTime
-					rt = time.Now().Local().Add(time.Minute * 3)
-				} else {
-					rt = time.Now().Local().Add(time.Minute * 3)
-					dt = time.Now().Local()
-					rpio.Pin(pin).Low()
-				}
-			} else {
-				rpio.Pin(pin).High()
-				rt = time.Now().Local()
-				time.Now().Local()
+	defer db.Put(conn)
+
+	reply, err := conn.Cmd("HGETALL", "Pin:"+strconv.Itoa(int(pin))).Map()
+	if err != nil {
+		panic(err)
+	} else if len(reply) == 0 {
+		panic(errNoAlbum)
+	}
+	rpio.Pin(pin).Output()
+	if state == "on" {
+		st = 0
+		if rpio.Pin(pin).Read() == 0 {
+			t, err := strconv.ParseInt(reply["DutyTime"], 0, 64)
+			if err != nil {
+				panic(err)
 			}
-			var rel []Relay
-			rel = r[:i]
-			rel = append(rel, Relay{p.ID, p.Description, p.Pin, uint8(rpio.Pin(pin).Read()), rt, dt})
-			if len(r) > i {
-				rel = append(r, rel[i+1:]...)
-			}
-			write(rel)
-			fmt.Println(relays)
+			dt = time.Unix(t, 0)
+			rt = time.Now().Local().Add(time.Minute * 3)
+		} else {
+			rt = time.Now().Local().Add(time.Minute * 3)
+			dt = time.Now().Local()
+			rpio.Pin(pin).Low()
 		}
+	} else {
+		st = 1
+		rpio.Pin(pin).High()
+		rt = time.Now().Local()
+		dt = time.Now().Local()
 	}
+	rel := Relay{
+		Pin:      pin,
+		State:    st,
+		RunTill:  rt,
+		DutyTime: dt,
+	}
+	rWrite(rel)
+	fmt.Println(rRead())
 }
 
 // DutyCycle func
@@ -269,21 +279,21 @@ func InitRelays() {
 	}
 	defer db.Put(conn)
 
-	resp := conn.Cmd("HMSET", "ID:2", "Description", "System A", "Pin", 6, "State", 1)
+	resp := conn.Cmd("HMSET", "Pin:6", "Description", "System A", "Pin", 6, "State", 1)
 	if resp.Err != nil {
 		log.Fatal(resp.Err)
 	}
-	resp = conn.Cmd("HMSET", "ID:3", "Description", "System B", "Pin", 7, "State", 1)
+	resp = conn.Cmd("HMSET", "Pin:7", "Description", "System B", "Pin", 7, "State", 1)
 	if resp.Err != nil {
 		log.Fatal(resp.Err)
 	}
-	resp = conn.Cmd("HMSET", "ID:4", "Description", "System C", "Pin", 8, "State", 1)
+	resp = conn.Cmd("HMSET", "Pin:8", "Description", "System C", "Pin", 8, "State", 1)
 	if resp.Err != nil {
 		log.Fatal(resp.Err)
 	}
-	systems[0] = "ID:2"
-	systems[1] = "ID:3"
-	systems[2] = "ID:4"
+	systems[0] = "Pin:6"
+	systems[1] = "Pin:7"
+	systems[2] = "Pin:8"
 
 	resp = conn.Cmd("HMSET", "album:1", "title", "Electric Ladyland", "artist", "Jimi Hendrix", "price", 4.95, "likes", 8)
 	if resp.Err != nil {
@@ -339,44 +349,12 @@ func main() {
 	mw := io.MultiWriter(os.Stdout, logFile)
 	log.SetOutput(mw)
 
-	resp := conn.Cmd("HMSET", "album:1", "title", "Electric Ladyland", "artist", "Jimi Hendrix", "price", 4.95, "likes", 8)
-	// Check the Err field of the *Resp object for any errors.
-	if resp.Err != nil {
-		log.Fatal(resp.Err)
-	}
-
-	fmt.Println("Electric Ladyland added!!")
 	err = endless.ListenAndServe(":80", mux)
 	if err != nil {
 		log.Println(err)
 	}
 
 }
-
-/*
-func ToggleRPIO() {
-	for {
-		quit := make(chan struct{})
-		r := make(chan Relay)
-		go func() {
-			for {
-				select {
-				case <-r:
-					if r.State == 1 {
-						rpio.Pin(r.Pin).High()
-					} else {
-						rpio.Pin(r.Pin).Low()
-					}
-
-				case <-quit:
-					ticker.Stop()
-					return
-				}
-			}
-		}()
-	}
-}
-*/
 
 func read() []Relay {
 	lock.RLock()
@@ -437,13 +415,13 @@ func rRead() ([]Relay, error) {
 	return r, nil
 }
 
-func rWrite(r *Relay) {
+func rWrite(r Relay) {
 	conn, err := db.Get()
 	if err != nil {
 		panic(err)
 	}
 	defer db.Put(conn)
-	resp := conn.Cmd("HMSET", "ID:"+strconv.Itoa(r.ID), "Description", r.Description, "Pin", r.Pin, "State", r.State, "RunTill", int64(r.RunTill.Unix()), "DutyTime", int64(r.DutyTime.Unix()))
+	resp := conn.Cmd("HMSET", "Pin:"+strconv.Itoa(int(r.Pin)), "Description", r.Description, "Pin", r.Pin, "State", r.State, "RunTill", int64(r.RunTill.Unix()), "DutyTime", int64(r.DutyTime.Unix()))
 	if resp.Err != nil {
 		log.Fatal(resp.Err)
 	}
