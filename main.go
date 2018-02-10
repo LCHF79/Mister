@@ -229,7 +229,7 @@ func Switch() {
 // TestTemplate func
 func TestTemplate(w http.ResponseWriter, r *http.Request) {
 	userName := getUserName(r)
-	fmt.Printf("username %s/n", userName)
+	fmt.Printf("username %s\n", userName)
 	if userName == "" {
 		http.Redirect(w, r, "/auth", 302)
 		return
@@ -780,8 +780,10 @@ func clearSession(response http.ResponseWriter) {
 func loginHandler(response http.ResponseWriter, request *http.Request) {
 	name := request.FormValue("name")
 	pass := request.FormValue("password")
-	redirectTarget := "/"
+	redirectTarget := "/auth"
 	if name != "" && pass != "" {
+		fmt.Println(name)
+		fmt.Println(pass)
 		if name == "costas" && pass == "4BeachSt" {
 			setSession(name, response)
 			redirectTarget = "/"
