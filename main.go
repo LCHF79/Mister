@@ -384,7 +384,7 @@ func main() {
 		config.MssqlServer, config.User, config.Pass, config.Port, config.Database)
 	fmt.Println(connString)
 	// Create connection pool
-	mssqldb, err = sql.Open("sqlserver", connString)
+	mssqldb, err = sql.Open("mssql", connString)
 	if err != nil {
 		log.Fatal(err)
 	}
