@@ -393,14 +393,31 @@ func main() {
 	// Create connection pool
 	mssqldb, err = sql.Open("sqlserver", connString)
 	if err != nil {
-		log.Fatal("Error creating connection pool:", err.Error())
+		log.Fatal(err)
 	}
 	fmt.Printf("Connected!\n")
 
+	rows, err := mssqldb.Query("INSERT INTO MistingLogs (?, ?, ?)", "system B", "On", time.Now().Local())
+	if err != nil {
+		fmt.Println("Cannot query: ", err.Error())
+		return
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var val []interface{}
+		err = rows.Scan(val...)
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+		fmt.Println(val)
+	}
+
 	conn, err := redis.Dial("tcp", "localhost:6379")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Error creating connection pool:", err.Error())
 	}
+
 	defer conn.Close()
 	err = rpio.Open()
 	if err != nil {
