@@ -780,10 +780,10 @@ func clearSession(response http.ResponseWriter) {
 func loginHandler(response http.ResponseWriter, request *http.Request) {
 	name := request.FormValue("name")
 	pass := request.FormValue("password")
+	fmt.Println(name)
+	fmt.Println(pass)
 	redirectTarget := "/auth"
 	if name != "" && pass != "" {
-		fmt.Println(name)
-		fmt.Println(pass)
 		if name == "costas" && pass == "4BeachSt" {
 			setSession(name, response)
 			redirectTarget = "/"
