@@ -190,12 +190,21 @@ func SwitchRelay(pin uint8, state string) {
 		dt = time.Now().Local()
 	}
 
-	result, err := mssqldb.Query("INSERT INTO MistingLogs (?, ?, ?)", reply["Description"], GetState(st), time.Now().Local())
+	rows, err := mssqldb.Query("INSERT INTO MistingLogs (?, ?, ?)", reply["Description"], GetState(st), time.Now().Local())
 	if err != nil {
 		fmt.Println("Cannot query: ", err.Error())
 		return
 	}
-	fmt.Println("Result: %s", result)
+	defer rows.Close()
+	for rows.Next() {
+		var val []interface{}
+		err = rows.Scan(val...)
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+		fmt.Println(val)
+	}
 
 	rel := Relay{
 		Description: reply["Description"],
@@ -368,7 +377,7 @@ func InitRelays() {
 // main function to boot up everything
 func main() {
 	var configuration Configuration
-	file, err := os.Open("./mssqlConfig.json")
+	file, err := os.Open("mssqlConfig.json")
 	if err != nil {
 		panic(err)
 	}
