@@ -367,6 +367,7 @@ func main() {
 	mux.HandleFunc("/like", addLike)
 	mux.HandleFunc("/popular", listPopular)
 	mux.HandleFunc("/auth", AuthFunc)
+	mux.HandleFunc("/login", loginHandler)
 
 	logFile, err := os.OpenFile("log.txt", os.O_CREATE|os.O_APPEND|os.O_RDWR, 0666)
 	if err != nil {
@@ -780,8 +781,8 @@ func clearSession(response http.ResponseWriter) {
 func loginHandler(response http.ResponseWriter, request *http.Request) {
 	name := request.FormValue("name")
 	pass := request.FormValue("password")
-	fmt.Println(name)
-	fmt.Println(pass)
+	fmt.Println("name: %s", name)
+	fmt.Println("password: %s", pass)
 	redirectTarget := "/auth"
 	if name != "" && pass != "" {
 		if name == "costas" && pass == "4BeachSt" {
