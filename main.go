@@ -376,7 +376,7 @@ func InitRelays() {
 
 // main function to boot up everything
 func main() {
-	config, err := LoadConfiguration("mssqlConfig.json")
+	config, err := LoadConfiguration("sqlcon.json")
 
 	fmt.Println(config)
 	connString := fmt.Sprintf("server=%s;user id=%s;password=%s;port=%s;database=%s;",

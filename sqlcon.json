@@ -1,0 +1,7 @@
+{
+    "server": "bshih.database.windows.net",
+    "user": "bshih",
+    "password": "as123456!",
+    "port": "1433",
+    "database": "MistingLogs"
+}
