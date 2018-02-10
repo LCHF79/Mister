@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -388,27 +389,32 @@ func main() {
 		log.Fatal(err)
 	}
 	fmt.Printf("Connected!\n")
+	ctx := context.Background()
+
+	err = mssqldb.PingContext(ctx)
+	if err != nil {
+		log.Fatal("Error pinging database: " + err.Error())
+	}
 
 	err = mssqldb.Ping()
 	if err != nil {
 		fmt.Println("Cannot connect: ", err.Error())
 	}
 
-	rows, err := mssqldb.Query("INSERT INTO MistingLogs (?, ?, ?)", "system B", "On", time.Now().Local())
+	tsql := fmt.Sprintf("INSERT INTO MistingLogs (@system, @state, @time);")
+
+	result, err := mssqldb.ExecContext(
+		ctx,
+		tsql,
+		sql.Named("system", "system B"),
+		sql.Named("state", "On"),
+		sql.Named("time", time.Now().Local()))
 	if err != nil {
 		fmt.Println("Cannot query: ", err.Error())
 		return
 	}
-	defer rows.Close()
-	for rows.Next() {
-		var val []interface{}
-		err = rows.Scan(val...)
-		if err != nil {
-			fmt.Println(err)
-			continue
-		}
-		fmt.Println(val)
-	}
+
+	fmt.Println(result.LastInsertId())
 
 	conn, err := redis.Dial("tcp", "localhost:6379")
 	if err != nil {
