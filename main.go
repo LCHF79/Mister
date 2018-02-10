@@ -30,7 +30,7 @@ var mssqldb *sql.DB
 type Config struct {
 	MssqlServer string `json:"server"`
 	User        string `json:"user"`
-	Pass        string `json:"pass"`
+	Pass        string `json:"password"`
 	Port        string `json:"port"`
 	Database    string `json:"database"`
 }
