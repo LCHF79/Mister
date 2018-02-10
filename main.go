@@ -190,7 +190,7 @@ func SwitchRelay(pin uint8, state string) {
 		dt = time.Now().Local()
 	}
 
-	res, err := mssqldb.Exec(`INSERT INTO MistingLogs VALUES (?, ?, ?)`, reply["Description"], state, time.Now().Local())
+	res, err := mssqldb.Exec(`INSERT INTO MistingLogs VALUES (?, ?, Current_Timestamp)`, reply["Description"], state)
 	if err != nil {
 		fmt.Println("Exec err:", err.Error())
 	} else {
