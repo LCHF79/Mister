@@ -461,6 +461,7 @@ func LoadConfiguration(file string) (Config, error) {
 	fmt.Println(configFile)
 	jsonParser := json.NewDecoder(configFile)
 	err = jsonParser.Decode(&config)
+	fmt.Println(config)
 	return config, err
 }
 
