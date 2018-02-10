@@ -191,20 +191,15 @@ func SwitchRelay(pin uint8, state string) {
 		dt = time.Now().Local()
 	}
 
-	rows, err := mssqldb.Query("INSERT INTO MistingLogs (?, ?, ?)", reply["Description"], GetState(st), time.Now().Local())
+	res, err := mssqldb.Exec(`INSERT INTO MistingLogs VALUES (?, ?, ?)`, reply["Description"], state, time.Now().Local())
 	if err != nil {
-		fmt.Println("Cannot query: ", err.Error())
-		return
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var val []interface{}
-		err = rows.Scan(val...)
-		if err != nil {
-			fmt.Println(err)
-			continue
+		fmt.Println("Exec err:", err.Error())
+	} else {
+		rows, _ := res.RowsAffected()
+		if rows == 1 {
+			fmt.Println("1 row inserted")
 		}
-		fmt.Println(val)
+		fmt.Println(res.RowsAffected())
 	}
 
 	rel := Relay{
@@ -400,21 +395,6 @@ func main() {
 	if err != nil {
 		fmt.Println("Cannot connect: ", err.Error())
 	}
-
-	tsql := fmt.Sprintf("INSERT INTO MistingLogs (@system, @state, @time);")
-
-	result, err := mssqldb.ExecContext(
-		ctx,
-		tsql,
-		sql.Named("system", "system B"),
-		sql.Named("state", "On"),
-		sql.Named("time", time.Now().Local()))
-	if err != nil {
-		fmt.Println("Cannot query: ", err.Error())
-		return
-	}
-
-	fmt.Println(result.LastInsertId())
 
 	conn, err := redis.Dial("tcp", "localhost:6379")
 	if err != nil {
