@@ -397,6 +397,12 @@ func main() {
 	}
 	fmt.Printf("Connected!\n")
 
+	err = mssqldb.Ping()
+	if err != nil {
+		fmt.Println("Cannot connect: ", err.Error())
+		return
+	}
+
 	rows, err := mssqldb.Query("INSERT INTO MistingLogs (?, ?, ?)", "system B", "On", time.Now().Local())
 	if err != nil {
 		fmt.Println("Cannot query: ", err.Error())
