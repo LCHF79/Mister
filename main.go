@@ -30,7 +30,7 @@ type Config struct {
 	MssqlServer string `json:"server"`
 	User        string `json:"user"`
 	Password    string `json:"password"`
-	Port        int    `json:"port"`
+	Port        string `json:"port"`
 	Database    string `json:"database"`
 }
 
@@ -379,7 +379,7 @@ func main() {
 	config, err := LoadConfiguration("mssqlConfig.json")
 
 	fmt.Println(config)
-	connString := fmt.Sprintf("server=%s;user id=%s;password=%s;port=%d;database=%s;",
+	connString := fmt.Sprintf("server=%s;user id=%s;password=%s;port=%s;database=%s;",
 		config.MssqlServer, config.User, config.Password, config.Port, config.Database)
 	fmt.Println(connString)
 	// Create connection pool
