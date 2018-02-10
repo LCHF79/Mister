@@ -16,3 +16,4 @@ main
 mssqlConfig.json
 testing.go
 testconfig.json
+sqlcon.json
