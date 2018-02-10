@@ -389,7 +389,7 @@ func main() {
 
 	connString := fmt.Sprintf("server=%s;user id=%s;password=%s;port=%d;database=%s;",
 		configuration.mssqlServer, configuration.user, configuration.password, configuration.port, configuration.database)
-
+	fmt.Println(connString)
 	// Create connection pool
 	mssqldb, err = sql.Open("sqlserver", connString)
 	if err != nil {
@@ -400,7 +400,6 @@ func main() {
 	err = mssqldb.Ping()
 	if err != nil {
 		fmt.Println("Cannot connect: ", err.Error())
-		return
 	}
 
 	rows, err := mssqldb.Query("INSERT INTO MistingLogs (?, ?, ?)", "system B", "On", time.Now().Local())
