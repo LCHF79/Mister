@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	_ "github.com/denisenkom/go-mssqldb"
 	"github.com/fvbock/endless"
 	"github.com/gorilla/securecookie"
 	"github.com/mediocregopher/radix.v2/pool"
@@ -20,6 +22,17 @@ import (
 	rpio "github.com/stianeikeland/go-rpio"
 	"github.com/yryz/ds18b20"
 )
+
+var mssqldb *sql.DB
+
+//Configuration is a struct dumb ass
+type Configuration struct {
+	mssqlServer string
+	port        int
+	user        string
+	password    string
+	database    string
+}
 
 var cookieHandler = securecookie.New(securecookie.GenerateRandomKey(64), securecookie.GenerateRandomKey(32))
 var db *pool.Pool
@@ -176,6 +189,14 @@ func SwitchRelay(pin uint8, state string) {
 		rt = time.Now().Local()
 		dt = time.Now().Local()
 	}
+
+	result, err := mssqldb.Query("INSERT INTO MistingLogs (?, ?, ?)", reply["Description"], GetState(st), time.Now().Local())
+	if err != nil {
+		fmt.Println("Cannot query: ", err.Error())
+		return
+	}
+	fmt.Println("Result: %s", result)
+
 	rel := Relay{
 		Description: reply["Description"],
 		Pin:         pin,
@@ -346,6 +367,27 @@ func InitRelays() {
 
 // main function to boot up everything
 func main() {
+	var configuration Configuration
+	file, err := os.Open("./mssqlConfig.json")
+	if err != nil {
+		panic(err)
+	}
+	decoder := json.NewDecoder(file)
+	err = decoder.Decode(&configuration)
+	if err != nil {
+		panic(err)
+	}
+
+	connString := fmt.Sprintf("server=%s;user id=%s;password=%s;port=%d;database=%s;",
+		configuration.mssqlServer, configuration.user, configuration.password, configuration.port, configuration.database)
+
+	// Create connection pool
+	mssqldb, err = sql.Open("sqlserver", connString)
+	if err != nil {
+		log.Fatal("Error creating connection pool:", err.Error())
+	}
+	fmt.Printf("Connected!\n")
+
 	conn, err := redis.Dial("tcp", "localhost:6379")
 	if err != nil {
 		log.Fatal(err)
@@ -781,8 +823,8 @@ func clearSession(response http.ResponseWriter) {
 func loginHandler(response http.ResponseWriter, request *http.Request) {
 	name := request.FormValue("name")
 	pass := request.FormValue("password")
-	fmt.Println("name: %s", name)
-	fmt.Println("password: %s", pass)
+	fmt.Printf("name: %s\n", name)
+	fmt.Printf("password: %s\n", pass)
 	redirectTarget := "/auth"
 	if name != "" && pass != "" {
 		if name == "costas" && pass == "4BeachSt" {
