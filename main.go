@@ -229,6 +229,7 @@ func Switch() {
 // TestTemplate func
 func TestTemplate(w http.ResponseWriter, r *http.Request) {
 	userName := getUserName(r)
+	fmt.Printf("username %s/n", userName)
 	if userName == "" {
 		http.Redirect(w, r, "/auth", 302)
 		return
