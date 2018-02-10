@@ -25,13 +25,13 @@ import (
 
 var mssqldb *sql.DB
 
-//Configuration is a struct dumb ass
-type Configuration struct {
-	mssqlServer string
-	port        int
-	user        string
-	password    string
-	database    string
+//Config is a struct dumb ass
+type Config struct {
+	MssqlServer string `json:"server"`
+	User        string `json:"user"`
+	Password    string `json:"password"`
+	Port        int    `json:"port"`
+	Database    string `json:"database"`
 }
 
 var cookieHandler = securecookie.New(securecookie.GenerateRandomKey(64), securecookie.GenerateRandomKey(32))
@@ -376,19 +376,11 @@ func InitRelays() {
 
 // main function to boot up everything
 func main() {
-	var configuration Configuration
-	file, err := os.Open("./mssqlConfig.json")
-	if err != nil {
-		panic(err)
-	}
-	decoder := json.NewDecoder(file)
-	err = decoder.Decode(&configuration)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(configuration)
+	config, err := LoadConfiguration("mssqlConfig.json")
+
+	fmt.Println(config)
 	connString := fmt.Sprintf("server=%s;user id=%s;password=%s;port=%d;database=%s;",
-		configuration.mssqlServer, configuration.user, configuration.password, configuration.port, configuration.database)
+		config.MssqlServer, config.User, config.Password, config.Port, config.Database)
 	fmt.Println(connString)
 	// Create connection pool
 	mssqldb, err = sql.Open("sqlserver", connString)
@@ -454,6 +446,19 @@ func main() {
 		log.Println(err)
 	}
 
+}
+
+//LoadConfiguration is a func
+func LoadConfiguration(file string) (Config, error) {
+	var config Config
+	configFile, err := os.Open(file)
+	defer configFile.Close()
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	jsonParser := json.NewDecoder(configFile)
+	err = jsonParser.Decode(&config)
+	return config, err
 }
 
 func read() []Relay {
