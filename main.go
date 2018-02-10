@@ -451,11 +451,14 @@ func main() {
 //LoadConfiguration is a func
 func LoadConfiguration(file string) (Config, error) {
 	var config Config
+
+	fmt.Println(file)
 	configFile, err := os.Open(file)
 	defer configFile.Close()
 	if err != nil {
 		fmt.Println(err.Error())
 	}
+	fmt.Println(configFile)
 	jsonParser := json.NewDecoder(configFile)
 	err = jsonParser.Decode(&config)
 	return config, err
