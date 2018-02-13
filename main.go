@@ -295,8 +295,6 @@ func coolroomloghandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Fprintf(w, "Done!") 
-
-	return  nil
 }
 
 // GetState func
