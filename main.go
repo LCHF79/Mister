@@ -284,7 +284,8 @@ func coolroomloghandler(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	defer db.Put(conn)
-
+	
+	fmt.Printf("Form body: %s", r.Form)
 	for key, values := range r.Form {   // range over map
 		fmt.Printf("key=%s, value=%s\n", key, values)
 		for _, value := range values {    // range over []string
