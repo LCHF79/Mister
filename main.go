@@ -286,7 +286,9 @@ func coolroomloghandler(w http.ResponseWriter, r *http.Request) {
 	defer db.Put(conn)
 
 	for key, values := range r.Form {   // range over map
+		fmt.Printf("key=%s, value=%s\n", key, value)
 		for _, value := range values {    // range over []string
+			fmt.Printf("value=%s\n", value)
 			resp := conn.Cmd("HMSET", "cr:"+key, "Value", value)
 			if resp.Err != nil {
 				log.Fatal(resp.Err)
