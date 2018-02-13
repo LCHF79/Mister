@@ -62,6 +62,12 @@ type Relay struct {
 	DutyTime    time.Time `json:"dutytime,omitempty"`
 }
 
+//Coolroom Temps
+type CoolroomTemps struct {
+	Tag string `json:"tag"`
+	Value string `json:"value"`
+}
+
 //Response struct
 type Response struct {
 	Temperature []Sensor
@@ -133,11 +139,6 @@ func GetTemps(w http.ResponseWriter, r *http.Request) {
 
 // HandleSwitch func
 func HandleSwitch(w http.ResponseWriter, r *http.Request) {
-	userName := getUserName(r)
-	if userName == "" {
-		http.Redirect(w, r, "/aut", 302)
-		return
-	}
 	fmt.Printf("%v\n", r.URL.String())
 	p := r.FormValue("pin")
 	q, _ := strconv.ParseInt(p, 10, 8)
@@ -276,6 +277,25 @@ func TestTemplate(w http.ResponseWriter, r *http.Request) {
 	tmpl.Execute(w, res)
 }
 
+func coolroomloghandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("%v\n", r.URL.String())
+	conn, err := db.Get()
+	if err != nil {
+		panic(err)
+	}
+	defer db.Put(conn)
+
+	for key, values := range r.Form {   // range over map
+		for _, value := range values {    // range over []string
+			resp := conn.Cmd("HMSET", "cr:"+key, "Value", value)
+			if resp.Err != nil {
+				log.Fatal(resp.Err)
+			}
+		}
+	}
+	return  fmt.Fprintf(w, "Done!") 
+}
+
 // GetState func
 func GetState(s uint8) string {
 	if s == 1 {
@@ -410,6 +430,7 @@ func main() {
 	mux.HandleFunc("/popular", listPopular)
 	mux.HandleFunc("/auth", AuthFunc)
 	mux.HandleFunc("/login", loginHandler)
+	mux.HandleFunc("/coolroomlogs", coolroomloghandler)
 
 	logFile, err := os.OpenFile("log.txt", os.O_CREATE|os.O_APPEND|os.O_RDWR, 0666)
 	if err != nil {
