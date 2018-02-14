@@ -242,11 +242,12 @@ func DutyCycle() {
 
 // Switch func
 func Switch() {
+	sw := make(chan Relay)
 	for {
 		fmt.Println("Looping")
 		select {
 		case cmd := <-sw:
-			fmt.Printf("Pin: %s State: %d\n", cmd.Pin, cmd.State)
+			fmt.Printf("Pin: %n State: %d\n", cmd.Pin, cmd.State)
 		}
 	}
 }
