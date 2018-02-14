@@ -152,11 +152,12 @@ func SwitchRelay(pin uint8, state string) {
 	var rt time.Time
 	var dt time.Time
 	var st uint8
-	sw := make(chan Relay)
-	sw <- Relay{
+	//sw := make(chan Relay)
+	/*sw <- Relay{
 			Pin: 6,
 			State: 1,
 		}
+	*/
 	conn, err := db.Get()
 	if err != nil {
 		panic(err)
@@ -411,7 +412,7 @@ func InitRelays() {
 
 // main function to boot up everything
 func main() {
-	go Switch()
+	// go Switch()
 	config, err := LoadConfiguration("sqlcon.json")
 
 	fmt.Println(config)
