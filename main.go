@@ -190,7 +190,7 @@ func SwitchRelay(pin uint8, state string) {
 		rt = time.Now().Local()
 		dt = time.Now().Local()
 	}
-
+	fmt.Println(time.Now().Unix())
 	go LogSwitch(reply["Description"], state, time.Now())
 
 	rel := Relay{
@@ -207,7 +207,7 @@ func SwitchRelay(pin uint8, state string) {
 // DutyCycle func
 func DutyCycle() {
 	var dt time.Time
-	r := read()
+	r := rRead()
 	var rel []Relay
 
 	for _, p := range r {
@@ -232,7 +232,7 @@ func DutyCycle() {
 		}
 		dt = p.DutyTime
 		rel = append(rel, Relay{p.ID, p.Description, p.Pin, uint8(rpio.Pin(p.Pin).Read()), p.RunTill, dt})
-		write(rel)
+		rWrite(rel)
 	}
 }
 
