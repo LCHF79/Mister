@@ -285,20 +285,10 @@ func coolroomloghandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer db.Put(conn)
 	
-	err := r.ParseForm()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	r.ParseForm()
 
-	body, err := ioutil.RealAll(r.Body)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	fmt.Printf("Form body: %s", r.body)
 
-	fmt.Printf("Form body: %s", string(body)
-	
 	for key, values := range r.Form {   // range over map
 		fmt.Printf("key=%s, value=%s\n", key, values)
 		for _, value := range values {    // range over []string
