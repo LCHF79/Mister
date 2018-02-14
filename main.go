@@ -64,7 +64,7 @@ type Relay struct {
 
 //CoolroomTemps struct
 type CoolroomTemps struct {
-	Tag string `json:"tag"`
+	Tag   string `json:"tag"`
 	Value string `json:"value"`
 }
 
@@ -78,6 +78,7 @@ var temps []Sensor
 var relays []Relay
 var lock = sync.RWMutex{}
 var systems [3]string
+var msg chan Relay
 
 func init() {
 	var err error
@@ -154,9 +155,9 @@ func SwitchRelay(pin uint8, state string) {
 	var st uint8
 	//sw := make(chan Relay)
 	/*sw <- Relay{
-			Pin: 6,
-			State: 1,
-		}
+		Pin: 6,
+		State: 1,
+	}
 	*/
 	conn, err := db.Get()
 	if err != nil {
@@ -187,11 +188,13 @@ func SwitchRelay(pin uint8, state string) {
 		} else {
 			rt = time.Now().Local().Add(time.Minute * 3)
 			dt = time.Now().Local()
-			rpio.Pin(pin).Low()
+			msg <- Relay{Pin: pin, State: 0}
+			//rpio.Pin(pin).Low()
 		}
 	} else {
 		st = 1
-		rpio.Pin(pin).High()
+		msg <- Relay{Pin: pin, State: 1}
+		//pio.Pin(pin).High()
 		rt = time.Now().Local()
 		dt = time.Now().Local()
 	}
@@ -213,12 +216,13 @@ func SwitchRelay(pin uint8, state string) {
 func DutyCycle() {
 	var dt time.Time
 	r, _ := rRead()
-	
+
 	for _, p := range r {
 		rpio.Pin(p.Pin).Output()
 		if p.RunTill.Sub(time.Now()) < 0 {
 			if uint8(rpio.Pin(p.Pin).Read()) == 0 {
-				rpio.Pin(p.Pin).High()
+				//rpio.Pin(p.Pin).High()
+				msg <- Relay{Pin: p.Pin, State: 0}
 				go LogSwitch(p.Description, "off", time.Now())
 			}
 			/*
@@ -242,13 +246,17 @@ func DutyCycle() {
 }
 
 // Switch func
-func Switch() {
-	sw := make(chan Relay)
+func switcher() {
 	for {
-		fmt.Println("Looping")
 		select {
-		case cmd := <-sw:
-			fmt.Printf("Pin: %n State: %d\n", cmd.Pin, cmd.State)
+		case rel := <-msg:
+			if rel.State == 1 {
+				rpio.Pin(rel.Pin).High()
+			} else {
+				rpio.Pin(rel.Pin).Low()
+			}
+			time.Sleep(time.Millisecond * 400)
+			fmt.Printf("Message Received: %d %d\n", rel.Pin, rel.State)
 		}
 	}
 }
@@ -295,14 +303,14 @@ func coolroomloghandler(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 	defer db.Put(conn)
-	
+
 	r.ParseForm()
 
 	fmt.Printf("Form body: %s", r.Body)
 
-	for key, values := range r.Form {   // range over map
+	for key, values := range r.Form { // range over map
 		fmt.Printf("key=%s, value=%s\n", key, values)
-		for _, value := range values {    // range over []string
+		for _, value := range values { // range over []string
 			fmt.Printf("value=%s\n", value)
 			resp := conn.Cmd("HMSET", "cr:"+key, "Value", value)
 			if resp.Err != nil {
@@ -311,7 +319,7 @@ func coolroomloghandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	fmt.Fprintf(w, "Done!") 
+	fmt.Fprintf(w, "Done!")
 }
 
 // GetState func
@@ -363,7 +371,6 @@ func InitRelays() {
 			State:       1,
 		},
 	)
-	write(r)
 	conn, err := db.Get()
 	if err != nil {
 		panic(err)
@@ -412,7 +419,8 @@ func InitRelays() {
 
 // main function to boot up everything
 func main() {
-	// go Switch()
+	msg = make(chan Relay, 10)
+	go switcher()
 	config, err := LoadConfiguration("sqlcon.json")
 
 	fmt.Println(config)
@@ -444,9 +452,6 @@ func main() {
 	mux.HandleFunc("/temp", GetTemps)
 	mux.HandleFunc("/switch", HandleSwitch)
 	mux.HandleFunc("/", TestTemplate)
-	mux.HandleFunc("/album", showAlbum)
-	mux.HandleFunc("/like", addLike)
-	mux.HandleFunc("/popular", listPopular)
 	mux.HandleFunc("/auth", AuthFunc)
 	mux.HandleFunc("/login", loginHandler)
 	mux.HandleFunc("/coolroomlogs", coolroomloghandler)
@@ -480,20 +485,6 @@ func LoadConfiguration(file string) (Config, error) {
 	err = jsonParser.Decode(&config)
 	fmt.Println(config)
 	return config, err
-}
-
-func read() []Relay {
-	lock.RLock()
-	defer lock.RUnlock()
-	var r []Relay
-	r = append(r, relays...)
-	return r
-}
-
-func write(r []Relay) {
-	lock.Lock()
-	defer lock.Unlock()
-	relays = r
 }
 
 func rRead() ([]Relay, error) {
@@ -550,294 +541,6 @@ func rWrite(r Relay) {
 	resp := conn.Cmd("HMSET", "Pin:"+strconv.Itoa(int(r.Pin)), "Description", r.Description, "Pin", r.Pin, "State", r.State, "RunTill", int64(r.RunTill.Unix()), "DutyTime", int64(r.DutyTime.Unix()))
 	if resp.Err != nil {
 		log.Fatal(resp.Err)
-	}
-}
-
-func readRW() []Relay {
-	var r []Relay
-	r = append(r, relays...)
-	return r
-}
-
-func showAlbum(w http.ResponseWriter, r *http.Request) {
-	// Unless the request is using the GET method, return a 405 'Method Not
-	// Allowed' response.
-	if r.Method != "GET" {
-		w.Header().Set("Allow", "GET")
-		http.Error(w, http.StatusText(405), 405)
-		return
-	}
-
-	// Retrieve the id from the request URL query string. If there is no id
-	// key in the query string then Get() will return an empty string. We
-	// check for this, returning a 400 Bad Request response if it's missing.
-	id := r.URL.Query().Get("id")
-	if id == "" {
-		http.Error(w, http.StatusText(400), 400)
-		return
-	}
-	// Validate that the id is a valid integer by trying to convert it,
-	// returning a 400 Bad Request response if the conversion fails.
-	if _, err := strconv.Atoi(id); err != nil {
-		http.Error(w, http.StatusText(400), 400)
-		return
-	}
-
-	// Call the FindAlbum() function passing in the user-provided id. If
-	// there's no matching album found, return a 404 Not Found response. In
-	// the event of any other errors, return a 500 Internal Server Error
-	// response.
-	bk, err := findAlbum(id)
-	if err == errNoAlbum {
-		http.NotFound(w, r)
-		return
-	} else if err != nil {
-		http.Error(w, http.StatusText(500), 500)
-		return
-	}
-
-	// Write the album details as plain text to the client.
-	fmt.Fprintf(w, "%s by %s: £%.2f [%d likes] \n", bk.Title, bk.Artist, bk.Price, bk.Likes)
-}
-func findAlbum(id string) (*Album, error) {
-	// Use the connection pool's Get() method to fetch a single Redis
-	// connection from the pool.
-	conn, err := db.Get()
-	if err != nil {
-		return nil, err
-	}
-	// Importantly, use defer and the connection pool's Put() method to ensure
-	// that the connection is always put back in the pool before FindAlbum()
-	// exits.
-	defer db.Put(conn)
-
-	// Fetch the details of a specific album. If no album is found with the
-	// given id, the map[string]string returned by the Map() helper method
-	// will be empty. So we can simply check whether it's length is zero and
-	// return an ErrNoAlbum message if necessary.
-	reply, err := conn.Cmd("HGETALL", "album:"+id).Map()
-	if err != nil {
-		return nil, err
-	} else if len(reply) == 0 {
-		return nil, errNoAlbum
-	}
-
-	return populateAlbum(reply)
-}
-
-func populateAlbum(reply map[string]string) (*Album, error) {
-	var err error
-	ab := new(Album)
-	ab.Title = reply["title"]
-	ab.Artist = reply["artist"]
-	ab.Price, err = strconv.ParseFloat(reply["price"], 64)
-	if err != nil {
-		return nil, err
-	}
-	ab.Likes, err = strconv.Atoi(reply["likes"])
-	if err != nil {
-		return nil, err
-	}
-	return ab, nil
-}
-
-func incrementLikes(id string) error {
-	conn, err := db.Get()
-	if err != nil {
-		return err
-	}
-	defer db.Put(conn)
-
-	// Before we do anything else, check that an album with the given id
-	// exists. The EXISTS command returns 1 if a specific key exists
-	// in the database, and 0 if it doesn't.
-	exists, err := conn.Cmd("EXISTS", "album:"+id).Int()
-	if err != nil {
-		return err
-	} else if exists == 0 {
-		return errNoAlbum
-	}
-
-	// Use the MULTI command to inform Redis that we are starting a new
-	// transaction.
-	err = conn.Cmd("MULTI").Err
-	if err != nil {
-		return err
-	}
-
-	// Increment the number of likes in the album hash by 1. Because it
-	// follows a MULTI command, this HINCRBY command is NOT executed but
-	// it is QUEUED as part of the transaction. We still need to check
-	// the reply's Err field at this point in case there was a problem
-	// queueing the command.
-	err = conn.Cmd("HINCRBY", "album:"+id, "likes", 1).Err
-	if err != nil {
-		return err
-	}
-	// And we do the same with the increment on our sorted set.
-	err = conn.Cmd("ZINCRBY", "likes", 1, id).Err
-	if err != nil {
-		return err
-	}
-
-	// Execute both commands in our transaction together as an atomic group.
-	// EXEC returns the replies from both commands as an array reply but,
-	// because we're not interested in either reply in this example, it
-	// suffices to simply check the reply's Err field for any errors.
-	err = conn.Cmd("EXEC").Err
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func addLike(w http.ResponseWriter, r *http.Request) {
-	// Unless the request is using the POST method, return a 405 'Method Not
-	// Allowed' response.
-	if r.Method != "POST" {
-		w.Header().Set("Allow", "POST")
-		http.Error(w, http.StatusText(405), 405)
-		return
-	}
-
-	// Retreive the id from the POST request body. If there is no parameter
-	// named "id" in the request body then PostFormValue() will return an
-	// empty string. We check for this, returning a 400 Bad Request response
-	// if it's missing.
-	id := r.PostFormValue("id")
-	if id == "" {
-		http.Error(w, http.StatusText(400), 400)
-		return
-	}
-	// Validate that the id is a valid integer by trying to convert it,
-	// returning a 400 Bad Request response if the conversion fails.
-	if _, err := strconv.Atoi(id); err != nil {
-		http.Error(w, http.StatusText(400), 400)
-		return
-	}
-
-	// Call the IncrementLikes() function passing in the user-provided id. If
-	// there's no album found with that id, return a 404 Not Found response.
-	// In the event of any other errors, return a 500 Internal Server Error
-	// response.
-	err := incrementLikes(id)
-	if err == errNoAlbum {
-		http.NotFound(w, r)
-		return
-	} else if err != nil {
-		http.Error(w, http.StatusText(500), 500)
-		return
-	}
-
-	// Redirect the client to the GET /ablum route, so they can see the
-	// impact their like has had.
-	http.Redirect(w, r, "/album?id="+id, 303)
-}
-
-func findTopThree() ([]*Album, error) {
-	conn, err := db.Get()
-	if err != nil {
-		return nil, err
-	}
-	defer db.Put(conn)
-
-	// Begin an infinite loop.
-	for {
-		// Instruct Redis to watch the likes sorted set for any changes.
-		err = conn.Cmd("WATCH", "likes").Err
-		if err != nil {
-			return nil, err
-		}
-
-		// Use the ZREVRANGE command to fetch the album ids with the highest
-		// score (i.e. most likes) from our 'likes' sorted set. The ZREVRANGE
-		// start and stop values are zero-based indexes, so we use 0 and 2
-		// respectively to limit the reply to the top three. Because ZREVRANGE
-		// returns an array response, we use the List() helper function to
-		// convert the reply into a []string.
-		reply, err := conn.Cmd("ZREVRANGE", "likes", 0, 2).List()
-		if err != nil {
-			return nil, err
-		}
-
-		// Use the MULTI command to inform Redis that we are starting a new
-		// transaction.
-		err = conn.Cmd("MULTI").Err
-		if err != nil {
-			return nil, err
-		}
-
-		// Loop through the ids returned by ZREVRANGE, queuing HGETALL
-		// commands to fetch the individual album details.
-		for _, id := range reply {
-			err := conn.Cmd("HGETALL", "album:"+id).Err
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		// Execute the transaction. Importantly, use the Resp.IsType() method
-		// to check whether the reply from EXEC was nil or not. If it is nil
-		// it means that another client changed the WATCHed likes sorted set,
-		// so we use the continue command to re-run the loop.
-		ereply := conn.Cmd("EXEC")
-		if ereply.Err != nil {
-			return nil, err
-		} else if ereply.IsType(redis.Nil) {
-			continue
-		}
-
-		// Otherwise, use the Array() helper function to convert the
-		// transaction reply to an array of Resp objects ([]*Resp).
-		areply, err := ereply.Array()
-		if err != nil {
-			return nil, err
-		}
-
-		// Create a new slice to store the album details.
-		abs := make([]*Album, 3)
-
-		// Iterate through the array of Resp objects, using the Map() helper
-		// to convert the individual reply into a map[string]string, and then
-		// the populateAlbum function to create a new Album object
-		// from the map. Finally store them in order in the abs slice.
-		for i, reply := range areply {
-			mreply, err := reply.Map()
-			if err != nil {
-				return nil, err
-			}
-			ab, err := populateAlbum(mreply)
-			if err != nil {
-				return nil, err
-			}
-			abs[i] = ab
-		}
-
-		return abs, nil
-	}
-}
-
-func listPopular(w http.ResponseWriter, r *http.Request) {
-	// Unless the request is using the GET method, return a 405 'Method Not
-	// Allowed' response.
-	if r.Method != "GET" {
-		w.Header().Set("Allow", "GET")
-		http.Error(w, http.StatusText(405), 405)
-		return
-	}
-
-	// Call the FindTopThree() function, returning a return a 500 Internal
-	// Server Error response if there's any error.
-	abs, err := findTopThree()
-	if err != nil {
-		http.Error(w, http.StatusText(500), 500)
-		return
-	}
-
-	// Loop through the 3 albums, writing the details as a plain text list
-	// to the client.
-	for i, ab := range abs {
-		fmt.Fprintf(w, "%d) %s by %s: £%.2f [%d likes] \n", i+1, ab.Title, ab.Artist, ab.Price, ab.Likes)
 	}
 }
 
