@@ -230,7 +230,7 @@ func DutyCycle() {
 			*/
 		}
 		dt = p.DutyTime
-		rel = Relay{p.ID, p.Description, p.Pin, uint8(rpio.Pin(p.Pin).Read()), p.RunTill, dt}
+		rel := Relay{p.ID, p.Description, p.Pin, uint8(rpio.Pin(p.Pin).Read()), p.RunTill, dt}
 		rWrite(rel)
 	}
 }
