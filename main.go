@@ -287,7 +287,7 @@ func coolroomloghandler(w http.ResponseWriter, r *http.Request) {
 	
 	r.ParseForm()
 
-	fmt.Printf("Form body: %s", r.body)
+	fmt.Printf("Form body: %s", r.Body)
 
 	for key, values := range r.Form {   // range over map
 		fmt.Printf("key=%s, value=%s\n", key, values)
