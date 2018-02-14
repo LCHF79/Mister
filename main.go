@@ -410,6 +410,7 @@ func InitRelays() {
 
 // main function to boot up everything
 func main() {
+	sw := make(chan Relay)
 	go Switch()
 	config, err := LoadConfiguration("sqlcon.json")
 
