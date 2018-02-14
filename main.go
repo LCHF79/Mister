@@ -207,9 +207,8 @@ func SwitchRelay(pin uint8, state string) {
 // DutyCycle func
 func DutyCycle() {
 	var dt time.Time
-	r := rRead()
-	var rel []Relay
-
+	r, _ := rRead()
+	
 	for _, p := range r {
 		rpio.Pin(p.Pin).Output()
 		if p.RunTill.Sub(time.Now()) < 0 {
@@ -231,7 +230,7 @@ func DutyCycle() {
 			*/
 		}
 		dt = p.DutyTime
-		rel = append(rel, Relay{p.ID, p.Description, p.Pin, uint8(rpio.Pin(p.Pin).Read()), p.RunTill, dt})
+		rel = Relay{p.ID, p.Description, p.Pin, uint8(rpio.Pin(p.Pin).Read()), p.RunTill, dt}
 		rWrite(rel)
 	}
 }
