@@ -245,8 +245,8 @@ func Switch() {
 	for {
 		fmt.Println("Looping")
 		select {
-			case cmd := <-sw
-				fmt.Printf("Pin: %s State: %d\n", cmd.Pin, cmd.State)
+		case cmd := <-sw:
+			fmt.Printf("Pin: %s State: %d\n", cmd.Pin, cmd.State)
 		}
 	}
 }
@@ -410,7 +410,7 @@ func InitRelays() {
 
 // main function to boot up everything
 func main() {
-	go switch()
+	go Switch()
 	config, err := LoadConfiguration("sqlcon.json")
 
 	fmt.Println(config)
