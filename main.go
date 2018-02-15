@@ -385,6 +385,7 @@ func main() {
 	config, err := LoadConfiguration("sqlcon.json")
 	config2, err := LoadConfiguration2("config.json")
 	fmt.Println(config)
+	fmt.Println(config2)
 	connString := fmt.Sprintf("server=%s;user id=%s;password=%s;port=%s;database=%s;",
 		config.MssqlServer, config.User, config.Pass, config.Port, config.Database)
 	fmt.Println(connString)
