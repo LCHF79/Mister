@@ -153,12 +153,7 @@ func SwitchRelay(pin uint8, state string) {
 	var rt time.Time
 	var dt time.Time
 	var st uint8
-	//sw := make(chan Relay)
-	/*sw <- Relay{
-		Pin: 6,
-		State: 1,
-	}
-	*/
+	
 	conn, err := db.Get()
 	if err != nil {
 		panic(err)
@@ -209,7 +204,6 @@ func SwitchRelay(pin uint8, state string) {
 		DutyTime:    dt,
 	}
 	rWrite(rel)
-	fmt.Println(rRead())
 }
 
 // DutyCycle func
@@ -309,9 +303,8 @@ func coolroomloghandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("Form body: %s", r.Body)
 
 	for key, values := range r.Form { // range over map
-		fmt.Printf("key=%s, value=%s\n", key, values)
 		for _, value := range values { // range over []string
-			fmt.Printf("value=%s\n", value)
+			fmt.Printf("key=%s, value=%s\n", key, values)
 			resp := conn.Cmd("HMSET", "cr:"+key, "Value", value)
 			if resp.Err != nil {
 				log.Fatal(resp.Err)
@@ -351,26 +344,6 @@ func ToggleState(s uint8) string {
 
 // InitRelays func
 func InitRelays() {
-	var r []Relay
-	r = append(r, Relay{
-		ID:          2,
-		Description: "System A",
-		Pin:         6,
-		State:       1,
-	},
-		Relay{
-			ID:          3,
-			Description: "System B",
-			Pin:         7,
-			State:       1,
-		},
-		Relay{
-			ID:          4,
-			Description: "System C",
-			Pin:         8,
-			State:       1,
-		},
-	)
 	conn, err := db.Get()
 	if err != nil {
 		panic(err)
@@ -392,29 +365,6 @@ func InitRelays() {
 	systems[0] = "Pin:6"
 	systems[1] = "Pin:7"
 	systems[2] = "Pin:8"
-
-	resp = conn.Cmd("HMSET", "album:1", "title", "Electric Ladyland", "artist", "Jimi Hendrix", "price", 4.95, "likes", 8)
-	if resp.Err != nil {
-		log.Fatal(resp.Err)
-	}
-	resp = conn.Cmd("HMSET", "album:2", "title", "Back in Black", "artist", "AC/DC", "price", 5.95, "likes", 3)
-	if resp.Err != nil {
-		log.Fatal(resp.Err)
-	}
-	resp = conn.Cmd("HMSET", "album:3", "title", "Rumours", "artist", "Fleetwood Mac", "price", 7.95, "likes", 7)
-	if resp.Err != nil {
-		log.Fatal(resp.Err)
-	}
-	resp = conn.Cmd("HMSET", "album:4", "title", "Nevermind", "artist", "Nirvana", "price", 8.95, "likes", 11)
-	if resp.Err != nil {
-		log.Fatal(resp.Err)
-	}
-	resp = conn.Cmd("ZADD", "likes", 8, 1, 3, 2, 12, 3, 8, 4)
-	// Check the Err field of the *Resp object for any errors.
-	if resp.Err != nil {
-		log.Fatal(resp.Err)
-	}
-
 }
 
 // main function to boot up everything
@@ -509,7 +459,6 @@ func rRead() ([]Relay, error) {
 	var rt int64
 	var dt int64
 	for _, s := range systems {
-		fmt.Println(s)
 		reply, err := conn.Cmd("HGETALL", s).Map()
 		if err != nil {
 			return nil, err
