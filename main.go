@@ -216,7 +216,7 @@ func DutyCycle() {
 		if p.RunTill.Sub(time.Now()) < 0 {
 			if uint8(rpio.Pin(p.Pin).Read()) == 0 {
 				//rpio.Pin(p.Pin).High()
-				msg <- Relay{Pin: p.Pin, State: 0}
+				msg <- Relay{Pin: p.Pin, State: 1}
 				go LogSwitch(p.Description, "off", time.Now())
 			}
 			/*
