@@ -34,6 +34,18 @@ type Config struct {
 	Database    string `json:"database"`
 }
 
+type Config2 struct {
+	Database: {
+		MssqlServer string `json:"server"`
+		User        string `json:"user"`
+		Pass        string `json:"password"`
+		Port        string `json:"port"`
+		Database    string `json:"database"`
+	} `json:"database"`
+	Username: string `json:"username"`
+	Password: string `json:"password"`
+}
+
 var cookieHandler = securecookie.New(securecookie.GenerateRandomKey(64), securecookie.GenerateRandomKey(32))
 var db *pool.Pool
 var errNoAlbum = errors.New("models: no album found")
@@ -249,7 +261,7 @@ func switcher() {
 			} else {
 				rpio.Pin(rel.Pin).Low()
 			}
-			time.Sleep(time.Millisecond * 400)
+			time.Sleep(time.Millisecond * 800)
 			fmt.Printf("Message Received: %d %d\n", rel.Pin, rel.State)
 		}
 	}
@@ -271,7 +283,6 @@ func LogSwitch(sy string, st string, t time.Time) {
 // TestTemplate func
 func TestTemplate(w http.ResponseWriter, r *http.Request) {
 	userName := getUserName(r)
-	fmt.Printf("username %s\n", userName)
 	if userName == "" {
 		http.Redirect(w, r, "/auth", 302)
 		return
@@ -372,7 +383,7 @@ func main() {
 	msg = make(chan Relay, 10)
 	go switcher()
 	config, err := LoadConfiguration("sqlcon.json")
-
+	config2, err := LoadConfiguration2("config.json")
 	fmt.Println(config)
 	connString := fmt.Sprintf("server=%s;user id=%s;password=%s;port=%s;database=%s;",
 		config.MssqlServer, config.User, config.Pass, config.Port, config.Database)
@@ -423,6 +434,20 @@ func main() {
 //LoadConfiguration is a func
 func LoadConfiguration(file string) (Config, error) {
 	var config Config
+
+	configFile, err := os.Open(file)
+	defer configFile.Close()
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	jsonParser := json.NewDecoder(configFile)
+	err = jsonParser.Decode(&config)
+	return config, err
+}
+
+//LoadConfiguration2 is a func
+func LoadConfiguration2(file string) (Config2, error) {
+	var config Config2
 
 	fmt.Println(file)
 	configFile, err := os.Open(file)
@@ -532,8 +557,6 @@ func clearSession(response http.ResponseWriter) {
 func loginHandler(response http.ResponseWriter, request *http.Request) {
 	name := request.FormValue("name")
 	pass := request.FormValue("password")
-	fmt.Printf("name: %s\n", name)
-	fmt.Printf("password: %s\n", pass)
 	redirectTarget := "/auth"
 	if name != "" && pass != "" {
 		if name == "costas" && pass == "4BeachSt" {
