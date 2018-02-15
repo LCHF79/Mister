@@ -42,8 +42,8 @@ type Config2 struct {
 		Port        string `json:"port"`
 		Database    string `json:"database"`
 	} `json:"database"`
-	Username: string `json:"username"`
-	Password: string `json:"password"`
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
 
 var cookieHandler = securecookie.New(securecookie.GenerateRandomKey(64), securecookie.GenerateRandomKey(32))
