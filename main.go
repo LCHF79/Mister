@@ -35,7 +35,7 @@ type Config struct {
 }
 
 type Config2 struct {
-	Database: {
+	Database struct {
 		MssqlServer string `json:"server"`
 		User        string `json:"user"`
 		Pass        string `json:"password"`
